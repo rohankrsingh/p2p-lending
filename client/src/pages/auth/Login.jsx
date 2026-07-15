@@ -1,8 +1,9 @@
-// TODO: Build Login page — see implementation plan
+import { Card } from "@/components/ui/card";
+
 export default function Login() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-muted-foreground">Login — coming soon</p>
-    </div>
+    <Card className="">
+      <p className="text-amber-600">Login — coming soon</p>
+    </Card>
   )
 }
