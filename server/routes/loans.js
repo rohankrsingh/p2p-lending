@@ -1,7 +1,7 @@
 import express from 'express';
 import LoanRequest from '../models/LoanRequest.js';
 import { protect, requireRole } from '../middleware/auth.js';
-import { calculateEMI } from '../utils/emi.js';
+import { calculateEMI, generateSchedule } from '../utils/emi.js';
 
 const router = express.Router();
 
@@ -65,21 +65,81 @@ router.get('/my', protect, requireRole('borrower'), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LENDER routes (built Day 5)
+// LENDER routes
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * GET /api/loans/marketplace
- * All pending loans — paginated + filterable — lender only
- * Stub: implemented fully on Day 5
+ * All pending loans — paginated, filterable by amount & tenure, sortable
+ * Lender only
+ *
+ * Query params:
+ *   page       (default 1)
+ *   limit      (default 10, max 50)
+ *   minAmount  filter minimum loan amount
+ *   maxAmount  filter maximum loan amount
+ *   tenure     filter by exact tenure (months)
+ *   sort       newest | highest | lowest | shortest (default: newest)
  */
 router.get('/marketplace', protect, requireRole('lender'), async (req, res) => {
-  res.status(501).json({ message: 'Coming Day 5' });
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(50, parseInt(req.query.limit) || 10);
+    const skip  = (page - 1) * limit;
+
+    // ── Filters ──────────────────────────────────────────────
+    const filter = { status: 'pending' };
+
+    if (req.query.minAmount || req.query.maxAmount) {
+      filter.amount = {};
+      if (req.query.minAmount) filter.amount.$gte = Number(req.query.minAmount);
+      if (req.query.maxAmount) filter.amount.$lte = Number(req.query.maxAmount);
+    }
+    if (req.query.tenure) {
+      filter.tenure = Number(req.query.tenure);
+    }
+
+    // ── Sorting ───────────────────────────────────────────────
+    const sortMap = {
+      newest:   { createdAt: -1 },
+      highest:  { amount: -1 },
+      lowest:   { amount: 1 },
+      shortest: { tenure: 1 },
+    };
+    const sortKey = req.query.sort || 'newest';
+    const sort = sortMap[sortKey] || sortMap.newest;
+
+    const [loans, total] = await Promise.all([
+      LoanRequest.find(filter)
+        .populate('userId', 'name')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit),
+      LoanRequest.countDocuments(filter),
+    ]);
+
+    const loansWithEmi = loans.map((loan) => ({
+      ...loan.toObject(),
+      emi: calculateEMI(loan.amount, loan.interestRate, loan.tenure),
+    }));
+
+    res.json({
+      loans: loansWithEmi,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 /**
  * GET /api/loans/:id
- * Full loan detail with EMI preview — lender or borrower (owner)
+ * Full loan detail with EMI preview + month-by-month schedule — lender or borrower (owner)
  */
 router.get('/:id', protect, async (req, res) => {
   try {
@@ -99,7 +159,22 @@ router.get('/:id', protect, async (req, res) => {
     }
 
     const emi = calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-    res.json({ ...loan.toObject(), emi });
+
+    // Generate a preview schedule (not persisted — just for display)
+    // First instalment due one month from today for preview purposes
+    const schedulePreview = generateSchedule(
+      loan._id,
+      loan.amount,
+      loan.interestRate,
+      loan.tenure,
+      new Date()
+    ).map((item, idx) => ({
+      instalmentNumber: item.instalmentNumber,
+      dueDate: item.dueDate,
+      emiAmount: item.emiAmount,
+    }));
+
+    res.json({ ...loan.toObject(), emi, schedulePreview });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
