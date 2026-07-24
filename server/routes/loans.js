@@ -1,5 +1,6 @@
 import express from 'express';
 import LoanRequest from '../models/LoanRequest.js';
+import FundedLoan from '../models/FundedLoan.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { calculateEMI, generateSchedule } from '../utils/emi.js';
 
@@ -232,6 +233,32 @@ router.delete('/:id', protect, requireRole('borrower'), async (req, res) => {
 
     await loan.deleteOne();
     res.json({ message: 'Loan request cancelled successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * POST /api/loans/:id/fund
+ * Fund a pending loan request — borrower confirms funding (triggers status transition)
+ */
+router.post('/:id/fund', protect, requireRole('borrower'), async (req, res) => {
+  try {
+    const loan = await LoanRequest.findById(req.params.id);
+
+    if (!loan) return res.status(404).json({ message: 'Loan not found' });
+    if (loan.userId.toString() !== req.user.id)
+      return res.status(403).json({ message: 'Forbidden' });
+    if (loan.status !== 'pending')
+      return res
+        .status(400)
+        .json({ message: 'Only pending loans can be funded' });
+
+    loan.status = 'funded';
+    await loan.save();
+
+    const emi = calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+    res.json({ loan, emi });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
