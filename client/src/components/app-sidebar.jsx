@@ -1,10 +1,8 @@
 "use client"
 
 import * as React from "react"
-
+import { useAuthStore } from "@/store/useAuthStore"
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -12,181 +10,113 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar"
-import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon } from "lucide-react"
+import {
+  LayoutDashboard,
+  FilePlus,
+  FolderOpen,
+  CreditCard,
+  Store,
+  TrendingUp,
+  Wallet,
+  Settings,
+  Landmark,
+} from "lucide-react"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: (
-        <TerminalSquareIcon />
-      ),
-      isActive: true,
-      items: [
+export function AppSidebar({ ...props }) {
+  const { user } = useAuthStore()
+
+  const navItems = React.useMemo(() => {
+    if (!user) return []
+
+    if (user.role === "borrower") {
+      return [
         {
-          title: "History",
-          url: "#",
+          title: "Dashboard",
+          url: "/borrower/dashboard",
+          icon: LayoutDashboard,
         },
         {
-          title: "Starred",
-          url: "#",
+          title: "Apply for Loan",
+          url: "/borrower/create-loan",
+          icon: FilePlus,
+        },
+        {
+          title: "My Loans",
+          url: "/borrower/my-loans",
+          icon: FolderOpen,
+        },
+        {
+          title: "Repayments",
+          url: "/borrower/repayments",
+          icon: CreditCard,
         },
         {
           title: "Settings",
-          url: "#",
+          url: "/borrower/settings",
+          icon: Settings,
         },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: (
-        <BotIcon />
-      ),
-      items: [
+      ]
+    } else {
+      return [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Dashboard",
+          url: "/lender/dashboard",
+          icon: LayoutDashboard,
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Marketplace",
+          url: "/lender/marketplace",
+          icon: Store,
         },
         {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: (
-        <BookOpenIcon />
-      ),
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
+          title: "My Investments",
+          url: "/lender/investments",
+          icon: TrendingUp,
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "Payouts",
+          url: "/lender/payouts",
+          icon: Wallet,
         },
         {
-          title: "Tutorials",
-          url: "#",
+          title: "Settings",
+          url: "/lender/settings",
+          icon: Settings,
         },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: (
-        <Settings2Icon />
-      ),
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: (
-        <LifeBuoyIcon />
-      ),
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: (
-        <SendIcon />
-      ),
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: (
-        <FrameIcon />
-      ),
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: (
-        <PieChartIcon />
-      ),
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: (
-        <MapIcon />
-      ),
-    },
-  ],
-}
-export function AppSidebar({
-  ...props
-}) {
+      ]
+    }
+  }, [user])
+
   return (
-    <Sidebar variant="inset" {...props}>
-      <SidebarHeader>
+    <Sidebar variant="inset" className="border-slate-800 bg-[#0a0a0e] text-white" {...props}>
+      <SidebarHeader className="border-b border-slate-800/60 py-4 px-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<a href="#" />}>
-              <div
-                className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <TerminalIcon className="size-4" />
+            <SidebarMenuButton size="lg" className="hover:bg-slate-800/40">
+              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+                <Landmark className="size-5" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Acme Inc</span>
-                <span className="truncate text-xs">Enterprise</span>
+              <div className="grid flex-1 text-left text-sm leading-tight ml-2">
+                <span className="font-bold text-white tracking-tight">P2P Lend</span>
+                <span className="text-[10px] text-emerald-400 font-semibold tracking-wide uppercase">
+                  {user?.role === "borrower" ? "Borrower Portal" : "Investor Portal"}
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+      
+      <SidebarContent className="px-2 py-4">
+        <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
+
+      <SidebarFooter className="border-t border-slate-800/60 p-3">
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

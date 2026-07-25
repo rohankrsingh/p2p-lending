@@ -7,6 +7,7 @@ import { connectDB } from './utils/db.js';
 // Route imports (add more each day as we build them)
 import authRoutes from './routes/auth.js';
 import loanRoutes from './routes/loans.js';
+import repaymentRoutes from './routes/repayments.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,6 +20,7 @@ app.use(morgan('dev'));
 // ── Routes ────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/loans', loanRoutes);
+app.use('/api/repayments', repaymentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

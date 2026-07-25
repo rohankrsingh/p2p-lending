@@ -1,41 +1,63 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/store/useAuthStore'
+import {
+  IndianRupee,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Calendar,
+  Edit2,
+  Trash2,
+  Eye,
+  ArrowRight,
+  TrendingUp,
+  RefreshCw,
+  Loader2,
+  XCircle,
+} from 'lucide-react'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, IndianRupee, Edit, XCircle, CreditCard, AlertTriangle, CheckCircle2, Clock, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { calculateEMI } from '@/lib/emi'
 import api from '@/lib/api'
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All', count: 0 },
-  { value: 'pending', label: 'Pending', count: 0 },
-  { value: 'funded', label: 'Funded', count: 0 },
-  { value: 'repaying', label: 'Repaying', count: 0 },
-  { value: 'completed', label: 'Completed', count: 0 },
-  { value: 'defaulted', label: 'Defaulted', count: 0 },
-]
-
 export default function MyLoans() {
-  const { user } = useAuthStore()
-  const navigate = useNavigate()
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(null)
-  const [selectedTab, setSelectedTab] = useState('all')
-  const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('all')
+
+  // Selected loan for viewing schedule/details
+  const [viewingLoan, setViewingLoan] = useState(null)
+  
+  // Selected loan for editing
+  const [editingLoan, setEditingLoan] = useState(null)
+  const [editForm, setEditForm] = useState({ amount: '', tenure: '', reason: '' })
+  const [editLoading, setEditLoading] = useState(false)
+
+  // Selected loan for cancellation
+  const [cancellingLoan, setCancellingLoan] = useState(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
 
   const fetchLoans = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
       const { data } = await api.get('/loans/my')
       setLoans(data)
-      setError(null)
     } catch (err) {
-      const message = err.response?.data?.message || 'Failed to fetch loans'
-      setError(message)
-      toast.error(message)
+      toast.error('Failed to fetch your loans')
     } finally {
       setLoading(false)
     }
@@ -45,333 +67,531 @@ export default function MyLoans() {
     fetchLoans()
   }, [])
 
-  const handleCancel = async (loanId) => {
-    if (!confirm('Are you sure you want to cancel this loan request? This action cannot be undone.')) {
+  // Calculate high-level stats
+  const stats = useMemo(() => {
+    let totalBorrowed = 0
+    let activeCount = 0
+    let pendingCount = 0
+    let totalMonthlyEmi = 0
+
+    loans.forEach((loan) => {
+      if (loan.status !== 'cancelled') {
+        totalBorrowed += loan.amount
+      }
+      if (loan.status === 'active' || loan.status === 'funded') {
+        activeCount++
+        totalMonthlyEmi += loan.emi || 0
+      }
+      if (loan.status === 'pending') {
+        pendingCount++
+      }
+    });
+
+    return { totalBorrowed, activeCount, pendingCount, totalMonthlyEmi }
+  }, [loans])
+
+  // Filter loans by tab selection
+  const filteredLoans = useMemo(() => {
+    if (activeTab === 'all') return loans
+    if (activeTab === 'pending') return loans.filter(l => l.status === 'pending')
+    if (activeTab === 'active') return loans.filter(l => l.status === 'active' || l.status === 'funded')
+    if (activeTab === 'completed') return loans.filter(l => l.status === 'completed' || l.status === 'paid')
+    return loans
+  }, [loans, activeTab])
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30 font-medium">
+            <Clock className="w-3 h-3 mr-1" /> Pending Funding
+          </Badge>
+        )
+      case 'funded':
+      case 'active':
+        return (
+          <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-medium">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Active
+          </Badge>
+        )
+      case 'completed':
+      case 'paid':
+        return (
+          <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-medium">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Fully Repaid
+          </Badge>
+        )
+      case 'cancelled':
+        return (
+          <Badge className="bg-slate-800 text-slate-400 border-slate-700 font-medium">
+            <XCircle className="w-3 h-3 mr-1" /> Cancelled
+          </Badge>
+        )
+      default:
+        return <Badge className="bg-slate-800 text-slate-300 capitalize">{status}</Badge>
+    }
+  }
+
+  // Handle Edit Loan Modal opening
+  const openEditModal = (loan) => {
+    setEditingLoan(loan)
+    setEditForm({
+      amount: loan.amount,
+      tenure: loan.tenure,
+      reason: loan.reason,
+    })
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    if (editForm.amount < 1000 || editForm.amount > 50000) {
+      toast.error('Amount must be between ₹1,000 and ₹50,000')
+      return
+    }
+    if (editForm.reason.trim().length < 10) {
+      toast.error('Please enter a detailed reason')
       return
     }
 
+    setEditLoading(true)
     try {
-      setActionLoading(loanId)
-      await api.delete(`/loans/${loanId}`)
+      await api.put(`/loans/${editingLoan._id}`, {
+        amount: Number(editForm.amount),
+        tenure: Number(editForm.tenure),
+        reason: editForm.reason.trim(),
+      })
+      toast.success('Loan request updated successfully')
+      setEditingLoan(null)
+      fetchLoans()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update loan request')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  // Handle Cancel Loan confirmation
+  const handleCancelConfirm = async () => {
+    setCancelLoading(true)
+    try {
+      await api.delete(`/loans/${cancellingLoan._id}`)
       toast.success('Loan request cancelled successfully')
+      setCancellingLoan(null)
       fetchLoans()
     } catch (err) {
-      const message = err.response?.data?.message || 'Failed to cancel loan'
-      toast.error(message)
+      toast.error('Failed to cancel loan request')
     } finally {
-      setActionLoading(null)
+      setCancelLoading(false)
     }
   }
 
-  const handlePayNow = async (loanId) => {
-    try {
-      setActionLoading(loanId)
-      await api.post(`/loans/${loanId}/fund`)
-      toast.success('Payment initiated successfully')
-      fetchLoans()
-    } catch (err) {
-      const message = err.response?.data?.message || 'Failed to initiate payment'
-      toast.error(message)
-    } finally {
-      setActionLoading(null)
+  // Generate simulated schedule preview for detailed view
+  const previewSchedule = useMemo(() => {
+    if (!viewingLoan) return []
+    const schedule = []
+    const baseDate = new Date(viewingLoan.createdAt)
+    const emiAmount = viewingLoan.emi || calculateEMI(viewingLoan.amount, viewingLoan.interestRate, viewingLoan.tenure).emi
+
+    for (let i = 1; i <= viewingLoan.tenure; i++) {
+      const dueDate = new Date(baseDate)
+      dueDate.setMonth(dueDate.getMonth() + i)
+      schedule.push({
+        instalmentNumber: i,
+        dueDate: dueDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }),
+        emiAmount,
+      })
     }
-  }
-
-  const filteredLoans = selectedTab === 'all' 
-    ? loans 
-    : loans.filter(loan => loan.status === selectedTab)
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: {
-        variant: 'outline',
-        className: 'border-amber-500/40 text-amber-500 bg-amber-500/10',
-        icon: Clock,
-      },
-      funded: {
-        variant: 'outline',
-        className: 'border-blue-500/40 text-blue-500 bg-blue-500/10',
-        icon: CreditCard,
-      },
-      repaying: {
-        variant: 'outline',
-        className: 'border-purple-500/40 text-purple-500 bg-purple-500/10',
-        icon: Loader2,
-      },
-      completed: {
-        variant: 'outline',
-        className: 'border-emerald-500/40 text-emerald-500 bg-emerald-500/10',
-        icon: CheckCircle2,
-      },
-      defaulted: {
-        variant: 'outline',
-        className: 'border-rose-500/40 text-rose-500 bg-rose-500/10',
-        icon: AlertTriangle,
-      },
-    }
-
-    const config = statusConfig[status] || statusConfig.pending
-    const Icon = config.icon
-
-    return (
-      <Badge variant={config.variant} className={config.className}>
-        <Icon className="w-3 h-3 mr-1" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    )
-  }
-
-  const getDaysRemaining = (tenure) => {
-    return Math.max(0, tenure - 1)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading your loans...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Failed to Load Loans</h2>
-          <p className="text-muted-foreground max-w-md mx-auto">{error}</p>
-          <Button onClick={fetchLoans} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
-  }
+    return schedule
+  }, [viewingLoan])
 
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Badge variant="outline" className="border-blue-500/40 text-blue-500 bg-blue-500/10">
-            Borrower Desk
-          </Badge>
-          <span className="text-xs text-muted-foreground">• Your Active Loans</span>
+    <div className="space-y-8 text-white">
+      {/* Page Title Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My Loans & Portfolios</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Track active loan progress, monitor repayment schedules, and update pending credit requests.
+          </p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          My Loans
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1 max-w-2xl">
-          Manage all your loan requests and track their current status, from pending approval to successful completion.
-        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchLoans}
+          className="border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-white cursor-pointer h-9 px-3"
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b pb-4">
-        {STATUS_OPTIONS.map((tab) => {
-          const tabCount = tab.value === 'all' 
-            ? loans.length 
-            : loans.filter(l => l.status === tab.value).length
+      {/* ── Metric Cards Grid ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-slate-800 bg-slate-900/60 shadow-md">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-400 text-xs uppercase font-medium">Total Borrowed Amount</CardDescription>
+            <CardTitle className="text-2xl font-bold text-white font-mono">
+              ₹{stats.totalBorrowed.toLocaleString('en-IN')}
+            </CardTitle>
+          </CardHeader>
+          <CardFooter className="pt-0 text-[10px] text-slate-500">Excludes cancelled requests</CardFooter>
+        </Card>
 
-          return (
+        <Card className="border-slate-800 bg-slate-900/60 shadow-md">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-400 text-xs uppercase font-medium">Active Loans</CardDescription>
+            <CardTitle className="text-2xl font-bold text-emerald-400 font-mono">
+              {stats.activeCount}
+            </CardTitle>
+          </CardHeader>
+          <CardFooter className="pt-0 text-[10px] text-slate-500">Currently generating EMIs</CardFooter>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900/60 shadow-md">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-400 text-xs uppercase font-medium">Pending Requests</CardDescription>
+            <CardTitle className="text-2xl font-bold text-amber-400 font-mono">
+              {stats.pendingCount}
+            </CardTitle>
+          </CardHeader>
+          <CardFooter className="pt-0 text-[10px] text-slate-500">Awaiting peer investor match</CardFooter>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900/60 shadow-md">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-400 text-xs uppercase font-medium">Monthly Outflow (EMI)</CardDescription>
+            <CardTitle className="text-2xl font-bold text-white font-mono">
+              ₹{stats.totalMonthlyEmi.toLocaleString('en-IN')}
+            </CardTitle>
+          </CardHeader>
+          <CardFooter className="pt-0 text-[10px] text-slate-500">Total EMI for all active loans</CardFooter>
+        </Card>
+      </div>
+
+      {/* ── Filter Tabs ── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-900 pb-4">
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: 'all', label: 'All Requests' },
+            { id: 'pending', label: 'Pending Match' },
+            { id: 'active', label: 'Active Loans' },
+            { id: 'completed', label: 'Completed' },
+          ].map((tab) => (
             <button
-              key={tab.value}
-              onClick={() => setSelectedTab(tab.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${selectedTab === tab.value
-                  ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                  : 'bg-card border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                }`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-emerald-500 text-slate-950 font-bold'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
             >
               {tab.label}
-              {tabCount > 0 && (
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${selectedTab === tab.value
-                    ? 'bg-primary-foreground/20'
-                    : 'bg-muted-foreground/20'
-                  }`}
-                >
-                  {tabCount}
-                </span>
-              )}
             </button>
-          )
-        })}
+          ))}
+        </div>
       </div>
 
-      {filteredLoans.length === 0 ? (
-        <Card className="border-border/50 bg-muted/30">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                <CreditCard className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">
-                  {selectedTab === 'all' ? 'No Loans Yet' : `No ${selectedTab} Loans`}
-                </h3>
-                <p className="text-muted-foreground max-w-sm mx-auto">
-                  {selectedTab === 'all'
-                    ? "You haven't applied for any loans yet. Start your first loan request today!"
-                    : `You don't have any ${selectedTab} loans at the moment.`
-                  }
-                </p>
-              </div>
-              {selectedTab === 'all' && (
-                <Button onClick={() => navigate('/borrower/create-loan')}>
-                  Create New Loan
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* ── Loans Grid List ── */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <Card key={i} className="border-slate-800 bg-slate-900/40 animate-pulse h-52" />
+          ))}
+        </div>
+      ) : filteredLoans.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-slate-900 bg-slate-900/20">
+          <AlertCircle className="w-10 h-10 text-slate-600 mb-4" />
+          <h3 className="text-lg font-bold text-white">No loan requests found</h3>
+          <p className="text-slate-400 text-sm mt-1 max-w-sm">
+            {activeTab === 'all'
+              ? "You haven't submitted any loan requests yet."
+              : `No requests match the "${activeTab}" filter right now.`}
+          </p>
+          {activeTab === 'all' && (
+            <Button
+              onClick={() => navigate('/borrower/create-loan')}
+              className="mt-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold cursor-pointer h-9 text-xs"
+            >
+              Apply for a Loan <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredLoans.map((loan) => {
-            const emi = loan.emi || { emi: 0, totalInterest: 0, totalPayable: 0 }
-
-            return (
-              <Card key={loan._id} className="border-border/50 hover:border-border/80 transition-colors">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
-                          <IndianRupee className="w-4 h-4 text-primary" />
-                        </div>
-                        Loan #{loan._id.slice(-6).toUpperCase()}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-4 text-sm">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {loan.tenure} months
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {loan.createdAt ? new Date(loan.createdAt).toLocaleDateString() : 'N/A'}
-                        </span>
-                      </CardDescription>
-                    </div>
-                    {getStatusBadge(loan.status)}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                      <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
-                      <p className="text-lg font-bold font-mono text-foreground">
-                        ₹{loan.amount.toLocaleString('en-IN')}
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                      <p className="text-xs text-muted-foreground mb-1">Monthly EMI</p>
-                      <p className="text-lg font-bold font-mono text-primary">
-                        ₹{emi.emi.toLocaleString('en-IN')}
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                      <p className="text-xs text-muted-foreground mb-1">Total Interest</p>
-                      <p className="text-sm font-medium font-mono">
-                        ₹{emi.totalInterest.toLocaleString('en-IN')}
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                      <p className="text-xs text-muted-foreground mb-1">Tenure</p>
-                      <p className="text-sm font-medium">
-                        {getDaysRemaining(loan.tenure)} / {loan.tenure} months
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                    <p className="text-xs text-muted-foreground mb-2">Purpose</p>
-                    <p className="text-sm line-clamp-2" title={loan.reason}>
-                      {loan.reason}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredLoans.map((loan) => (
+            <Card key={loan._id} className="border-slate-800 bg-slate-900/50 hover:bg-slate-900/80 transition-colors shadow-lg overflow-hidden flex flex-col justify-between">
+              
+              {/* Card Header & Badges */}
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-slate-500 font-mono">
+                      ID: {loan._id.slice(-8).toUpperCase()}
                     </p>
+                    <CardTitle className="text-lg font-bold text-white font-mono">
+                      ₹{loan.amount.toLocaleString('en-IN')}
+                    </CardTitle>
                   </div>
-                </CardContent>
+                  {getStatusBadge(loan.status)}
+                </div>
+              </CardHeader>
 
-                <CardFooter className="pt-2">
-                  <div className="flex items-center justify-between w-full gap-3">
-                    <div className="text-xs text-muted-foreground">
-                      Updated: {loan.updatedAt ? new Date(loan.updatedAt).toLocaleDateString() : 'N/A'}
-                    </div>
-                    <div className="flex gap-2">
-                      {(loan.status === 'pending' || loan.status === 'funded') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/borrower/loans/${loan._id}/edit`)}
-                          className="text-xs h-8"
-                          disabled={actionLoading === loan._id}
-                        >
-                          <Edit className="w-3.5 h-3.5 mr-1.5" />
-                          Edit
-                        </Button>
-                      )}
-
-                      {loan.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleCancel(loan._id)}
-                          className="text-xs h-8"
-                          disabled={actionLoading === loan._id}
-                        >
-                          {actionLoading === loan._id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                          )}
-                          {actionLoading === loan._id ? 'Cancelling...' : 'Cancel'}
-                        </Button>
-                      )}
-
-                      {loan.status === 'funded' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handlePayNow(loan._id)}
-                          className="text-xs h-8"
-                          disabled={actionLoading === loan._id}
-                        >
-                          {actionLoading === loan._id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                          )}
-                          {actionLoading === loan._id ? 'Processing...' : 'Pay Now'}
-                        </Button>
-                      )}
-
-                      {loan.status === 'repaying' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate('/borrower/repayments')}
-                          className="text-xs h-8"
-                        >
-                          <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                          View Repayments
-                        </Button>
-                      )}
-
-                      {loan.status === 'completed' && (
-                        <Badge variant="outline" className="border-emerald-500/40 text-emerald-500 bg-emerald-500/10 text-xs h-8">
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                          Completed
-                        </Badge>
-                      )}
-                    </div>
+              {/* Card Body */}
+              <CardContent className="space-y-3 pb-6 flex-1">
+                <div className="grid grid-cols-3 gap-2 py-2.5 rounded-xl bg-slate-950/50 border border-slate-800/80 text-center font-mono">
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-medium">Tenure</span>
+                    <span className="text-xs font-bold text-white">{loan.tenure} Mos</span>
                   </div>
-                </CardFooter>
-              </Card>
-            )
-          })}
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-medium">Interest</span>
+                    <span className="text-xs font-bold text-emerald-400">12% p.a.</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-medium">Monthly EMI</span>
+                    <span className="text-xs font-bold text-white">₹{loan.emi || calculateEMI(loan.amount, loan.interestRate, loan.tenure).emi}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 text-xs text-slate-400 space-y-1 leading-relaxed">
+                  <span className="text-white/60 font-semibold flex items-center gap-1.5 mb-1">
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" /> Loan Purpose:
+                  </span>
+                  <p className="line-clamp-2 italic">"{loan.reason}"</p>
+                </div>
+              </CardContent>
+
+              {/* Card Actions Footer */}
+              <CardFooter className="bg-slate-950/30 border-t border-slate-800/50 py-3 px-4 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-500 font-mono">
+                  Applied on {new Date(loan.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewingLoan(loan)}
+                    className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
+                    title="View Details & Schedule"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+
+                  {loan.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditModal(loan)}
+                        className="h-8 w-8 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                        title="Edit Application"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCancellingLoan(loan)}
+                        className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                        title="Cancel Request"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardFooter>
+            </Card>
+          ))}
         </div>
       )}
+
+      {/* ── Dialog 1: View Loan Details & Instalment Schedule ── */}
+      <Dialog open={!!viewingLoan} onOpenChange={(open) => !open && setViewingLoan(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle className="text-white text-lg flex items-center justify-between pr-4">
+              <span>Loan Details</span>
+              <span className="font-mono text-emerald-400">
+                ₹{viewingLoan?.amount.toLocaleString('en-IN')}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs font-mono">
+              Loan Reference: {viewingLoan?._id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewingLoan && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                <div>
+                  <span className="text-slate-500 block uppercase font-medium">Interest Rate</span>
+                  <span className="font-semibold text-white">12.0% p.a. Fixed</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase font-medium">Tenure Duration</span>
+                  <span className="font-semibold text-white">{viewingLoan.tenure} Months</span>
+                </div>
+                <div className="pt-2">
+                  <span className="text-slate-500 block uppercase font-medium">Monthly EMI</span>
+                  <span className="font-semibold text-emerald-400 font-mono">₹{viewingLoan.emi || calculateEMI(viewingLoan.amount, viewingLoan.interestRate, viewingLoan.tenure).emi}</span>
+                </div>
+                <div className="pt-2">
+                  <span className="text-slate-500 block uppercase font-medium">Current Status</span>
+                  <span className="font-semibold capitalize text-white">{viewingLoan.status}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-xs text-slate-500 font-medium uppercase">Purpose</span>
+                <p className="text-xs text-slate-300 leading-relaxed italic bg-slate-950/30 p-2.5 rounded-lg border border-slate-850">
+                  "{viewingLoan.reason}"
+                </p>
+              </div>
+
+              <Separator className="bg-slate-800" />
+
+              {/* Schedule List */}
+              <div className="space-y-2">
+                <span className="text-xs text-slate-500 font-medium uppercase flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Estimated Instalment Timeline
+                </span>
+                
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {previewSchedule.map((item) => (
+                    <div
+                      key={item.instalmentNumber}
+                      className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-950/50 border border-slate-800/40 font-mono"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-slate-850 text-slate-300 flex items-center justify-center text-[10px] font-bold">
+                          {item.instalmentNumber}
+                        </span>
+                        <span className="text-slate-400 font-sans">{item.dueDate}</span>
+                      </div>
+                      <span className="font-semibold text-white">₹{item.emiAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="bg-slate-950/40 border-t border-slate-800/60 p-4">
+            <Button
+              variant="outline"
+              onClick={() => setViewingLoan(null)}
+              className="border-slate-800 bg-slate-900 text-white hover:bg-slate-800 cursor-pointer text-xs"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog 2: Edit Pending Loan ── */}
+      <Dialog open={!!editingLoan} onOpenChange={(open) => !open && setEditingLoan(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm w-full">
+          <DialogHeader>
+            <DialogTitle className="text-white text-lg">Edit Loan Application</DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs">
+              Update details for pending application {editingLoan?._id.slice(-6).toUpperCase()}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-amount" className="text-xs text-slate-300 uppercase">Loan Amount (₹)</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                min={1000}
+                max={50000}
+                value={editForm.amount}
+                onChange={(e) => setEditForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20 text-sm h-10 rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-tenure" className="text-xs text-slate-300 uppercase">Tenure (Months)</Label>
+              <select
+                id="edit-tenure"
+                value={editForm.tenure}
+                onChange={(e) => setEditForm(prev => ({ ...prev, tenure: Number(e.target.value) }))}
+                className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg p-2 h-10 text-sm focus:border-emerald-500 focus:ring-emerald-500/20 outline-none"
+              >
+                {TENURE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt} Months</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-reason" className="text-xs text-slate-300 uppercase">Purpose of Loan</Label>
+              <Textarea
+                id="edit-reason"
+                rows={3}
+                value={editForm.reason}
+                onChange={(e) => setEditForm(prev => ({ ...prev, reason: e.target.value }))}
+                className="bg-slate-950 border-slate-800 text-white focus:border-emerald-500 focus:ring-emerald-500/20 text-sm rounded-lg resize-none"
+                placeholder="Explain purpose of loan..."
+              />
+            </div>
+
+            <DialogFooter className="bg-slate-950/40 border-t border-slate-800/60 p-4 -mx-4 -mb-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditingLoan(null)}
+                className="text-slate-400 hover:text-white cursor-pointer text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={editLoading}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold cursor-pointer text-xs"
+              >
+                {editLoading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog 3: Confirm Cancellation ── */}
+      <Dialog open={!!cancellingLoan} onOpenChange={(open) => !open && setCancellingLoan(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-sm w-full">
+          <DialogHeader>
+            <DialogTitle className="text-white text-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" /> Cancel Loan Request?
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs">
+              Are you sure you want to cancel this pending loan request for ₹{cancellingLoan?.amount.toLocaleString('en-IN')}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="bg-slate-950/40 border-t border-slate-800/60 p-4 -mx-4 -mb-4">
+            <Button
+              variant="ghost"
+              onClick={() => setCancellingLoan(null)}
+              className="text-slate-400 hover:text-white cursor-pointer text-xs"
+            >
+              Keep Request
+            </Button>
+            <Button
+              onClick={handleCancelConfirm}
+              disabled={cancelLoading}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer text-xs"
+            >
+              {cancelLoading ? 'Cancelling...' : 'Confirm Cancel'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

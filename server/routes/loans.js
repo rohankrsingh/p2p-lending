@@ -1,6 +1,8 @@
 import express from 'express';
 import LoanRequest from '../models/LoanRequest.js';
 import FundedLoan from '../models/FundedLoan.js';
+import RepaymentSchedule from '../models/RepaymentSchedule.js';
+import Transaction from '../models/Transaction.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { calculateEMI, generateSchedule } from '../utils/emi.js';
 
@@ -138,6 +140,147 @@ router.get('/marketplace', protect, requireRole('lender'), async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LENDER routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/loans/lender/dashboard
+ * Lender portfolio statistics, recent investments, and recent transactions
+ */
+router.get('/lender/dashboard', protect, requireRole('lender'), async (req, res) => {
+  try {
+    const lenderId = req.user.id;
+
+    // 1. Fetch all funded loans for this lender
+    const fundedLoans = await FundedLoan.find({ lenderId }).populate({
+      path: 'loanRequestId',
+      select: 'amount tenure reason interestRate status',
+      populate: {
+        path: 'userId',
+        select: 'name email',
+      },
+    });
+
+    // 2. Fetch recent transactions for this lender (either as sender or receiver)
+    const recentTransactions = await Transaction.find({
+      $or: [{ fromUserId: lenderId }, { toUserId: lenderId }],
+    })
+      .populate('fromUserId', 'name role')
+      .populate('toUserId', 'name role')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Calculate stats
+    let totalInvested = 0;
+    let activeInvestments = 0;
+    let expectedMonthlyPayout = 0;
+    let totalInterestEarned = 0; // calculated from paid repayments
+
+    fundedLoans.forEach((loan) => {
+      totalInvested += loan.fundedAmount;
+      if (loan.status === 'active' || loan.status === 'repaying') {
+        activeInvestments++;
+        // Expected monthly payout is the EMI of the loan
+        const emi = calculateEMI(loan.fundedAmount, loan.loanRequestId?.interestRate || 12, loan.loanRequestId?.tenure || 6);
+        expectedMonthlyPayout += emi;
+      }
+    });
+
+    // Calculate total interest earned by fetching all completed repayments transactions
+    const repaymentTransactions = await Transaction.find({
+      toUserId: lenderId,
+      type: 'repayment',
+    }).populate('repaymentScheduleId');
+
+    repaymentTransactions.forEach((tx) => {
+      // EMI = principal + interest. For mock simplicity, we can assume interest is a fraction, 
+      // or just track full settled transaction amounts as returns
+      totalInterestEarned += tx.amount;
+    });
+
+    res.json({
+      stats: {
+        totalInvested,
+        activeInvestments,
+        expectedMonthlyPayout,
+        totalInterestEarned,
+      },
+      recentInvestments: fundedLoans.slice(-5).reverse(),
+      recentTransactions,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * POST /api/loans/:id/invest
+ * Fund a pending loan request - lender locks funding, creates FundedLoan, repayment schedule, and transaction log
+ */
+router.post('/:id/invest', protect, requireRole('lender'), async (req, res) => {
+  try {
+    const loan = await LoanRequest.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({ message: 'Loan request not found' });
+    }
+
+    if (loan.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending loans can be funded' });
+    }
+
+    // Verify lender is not the borrower
+    if (loan.userId.toString() === req.user.id) {
+      return res.status(400).json({ message: 'You cannot fund your own loan request' });
+    }
+
+    // Update LoanRequest status
+    loan.status = 'funded';
+    await loan.save();
+
+    // Create FundedLoan
+    const stripePaymentIntentId = `pi_mock_${Math.random().toString(36).substr(2, 9)}`;
+    const fundedLoan = await FundedLoan.create({
+      loanRequestId: loan._id,
+      lenderId: req.user.id,
+      borrowerId: loan.userId,
+      fundedAmount: loan.amount,
+      outstandingBalance: loan.amount,
+      stripePaymentIntentId,
+      status: 'active',
+    });
+
+    // Generate RepaymentSchedule instalments
+    const instalments = generateSchedule(
+      fundedLoan._id,
+      loan.amount,
+      loan.interestRate,
+      loan.tenure,
+      new Date()
+    );
+    await RepaymentSchedule.insertMany(instalments);
+
+    // Create Transaction Log
+    const transaction = await Transaction.create({
+      fromUserId: req.user.id,
+      toUserId: loan.userId,
+      amount: loan.amount,
+      type: 'funding',
+      stripeId: stripePaymentIntentId,
+      loanRequestId: loan._id,
+      fundedLoanId: fundedLoan._id,
+    });
+
+    res.status(201).json({
+      message: 'Loan successfully funded',
+      fundedLoan,
+      transaction,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 /**
  * GET /api/loans/:id
  * Full loan detail with EMI preview + month-by-month schedule — lender or borrower (owner)
@@ -233,32 +376,6 @@ router.delete('/:id', protect, requireRole('borrower'), async (req, res) => {
 
     await loan.deleteOne();
     res.json({ message: 'Loan request cancelled successfully' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * POST /api/loans/:id/fund
- * Fund a pending loan request — borrower confirms funding (triggers status transition)
- */
-router.post('/:id/fund', protect, requireRole('borrower'), async (req, res) => {
-  try {
-    const loan = await LoanRequest.findById(req.params.id);
-
-    if (!loan) return res.status(404).json({ message: 'Loan not found' });
-    if (loan.userId.toString() !== req.user.id)
-      return res.status(403).json({ message: 'Forbidden' });
-    if (loan.status !== 'pending')
-      return res
-        .status(400)
-        .json({ message: 'Only pending loans can be funded' });
-
-    loan.status = 'funded';
-    await loan.save();
-
-    const emi = calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-    res.json({ loan, emi });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

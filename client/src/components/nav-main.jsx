@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import {
   Collapsible,
   CollapsibleContent,
@@ -16,17 +17,15 @@ import {
 } from "@/components/ui/sidebar"
 import { ChevronRightIcon } from "lucide-react"
 
-export function NavMain({
-  items
-}) {
+export function NavMain({ items }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible key={item.title} defaultOpen={item.isActive} render={<SidebarMenuItem />}>
-            <SidebarMenuButton tooltip={item.title} render={<a href={item.url} />}>
-              {item.icon}
+            <SidebarMenuButton tooltip={item.title} render={<Link to={item.url} />}>
+              {item.icon && <item.icon className="size-4 shrink-0" />}
               <span>{item.title}</span>
             </SidebarMenuButton>
             {item.items?.length ? (
@@ -42,7 +41,7 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton render={<a href={subItem.url} />}>
+                        <SidebarMenuSubButton render={<Link to={subItem.url} />}>
                           <span>{subItem.title}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -55,5 +54,5 @@ export function NavMain({
         ))}
       </SidebarMenu>
     </SidebarGroup>
-  );
+  )
 }

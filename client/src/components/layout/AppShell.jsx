@@ -1,21 +1,54 @@
-import { Outlet } from 'react-router-dom'
-import Sidebar from './Sidebar'
+import { Outlet, useLocation } from 'react-router-dom'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
+import { Separator } from '@/components/ui/separator'
 
 /**
- * AppShell — wraps all authenticated routes with the sidebar layout.
+ * AppShell — wraps all authenticated routes with the modern shadcn sidebar-08 layout.
  * Outlet renders the matched child route (page).
  */
 export default function AppShell() {
-  return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
+  const location = useLocation()
 
-      {/* Main content area */}
-      <main className="flex-1 min-w-0 overflow-auto">
-        <div className="max-w-7xl mx-auto p-6 lg:p-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+  // Generate a page title based on the path
+  const getPageTitle = () => {
+    const segments = location.pathname.split('/').filter(Boolean)
+    if (segments.length <= 1) return 'Dashboard'
+    
+    // Convert kebab-case or camelCase to human readable title
+    const rawTitle = segments[1]
+    return rawTitle
+      .replace(/-/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-slate-950 w-full text-slate-100">
+        <AppSidebar />
+        
+        <SidebarInset className="bg-[#050508] border-l border-slate-900 flex-1 flex flex-col">
+          {/* Header Bar */}
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-900 px-4 sm:px-6 relative z-10 bg-[#050508]/80 backdrop-blur-md">
+            <SidebarTrigger className="text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg cursor-pointer" />
+            <Separator orientation="vertical" className="h-4 bg-slate-800" />
+            <h2 className="text-sm font-semibold tracking-tight text-white m-0">
+              {getPageTitle()}
+            </h2>
+          </header>
+
+          {/* Main scrollable content area */}
+          <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+            <div className="max-w-6xl mx-auto w-full">
+              <Outlet />
+            </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   )
 }
