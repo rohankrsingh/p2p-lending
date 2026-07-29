@@ -107,4 +107,30 @@ router.post('/:id/pay', protect, requireRole('borrower'), async (req, res) => {
   }
 });
 
+/**
+ * GET /api/repayments/lender/:fundedLoanId
+ * Fetch all repayment instalments for a specific funded loan (Lender only)
+ */
+router.get('/lender/:fundedLoanId', protect, requireRole('lender'), async (req, res) => {
+  try {
+    const fundedLoan = await FundedLoan.findById(req.params.fundedLoanId);
+    if (!fundedLoan) {
+      return res.status(404).json({ message: 'Funded loan not found' });
+    }
+
+    // Verify lender ownership
+    if (fundedLoan.lenderId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied: not your investment' });
+    }
+
+    const schedules = await RepaymentSchedule.find({
+      fundedLoanId: req.params.fundedLoanId,
+    }).sort({ instalmentNumber: 1 });
+
+    res.json(schedules);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;

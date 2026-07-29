@@ -215,6 +215,30 @@ router.get('/lender/dashboard', protect, requireRole('lender'), async (req, res)
 });
 
 /**
+ * GET /api/loans/lender/investments
+ * Fetch all funded loans (investments) for the logged-in lender
+ */
+router.get('/lender/investments', protect, requireRole('lender'), async (req, res) => {
+  try {
+    const lenderId = req.user.id;
+    const fundedLoans = await FundedLoan.find({ lenderId })
+      .populate({
+        path: 'loanRequestId',
+        select: 'amount tenure reason interestRate status',
+        populate: {
+          path: 'userId',
+          select: 'name email',
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    res.json(fundedLoans);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
  * POST /api/loans/:id/invest
  * Fund a pending loan request - lender locks funding, creates FundedLoan, repayment schedule, and transaction log
  */
