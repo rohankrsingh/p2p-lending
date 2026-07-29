@@ -1,4 +1,5 @@
 import express from 'express';
+import stripe from '../services/stripe.js';
 import LoanRequest from '../models/LoanRequest.js';
 import FundedLoan from '../models/FundedLoan.js';
 import RepaymentSchedule from '../models/RepaymentSchedule.js';

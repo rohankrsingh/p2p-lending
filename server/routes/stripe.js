@@ -12,8 +12,15 @@
  *   Verify webhook signature and handle Stripe events.
  */
 import express from 'express';
+import mongoose from 'mongoose';
 import stripe from '../services/stripe.js';
 import User from '../models/User.js';
+import StripeEvent from '../models/StripeEvent.js';
+import LoanRequest from '../models/LoanRequest.js';
+import FundedLoan from '../models/FundedLoan.js';
+import RepaymentSchedule from '../models/RepaymentSchedule.js';
+import Transaction from '../models/Transaction.js';
+import { generateSchedule } from '../utils/emi.js';
 import { protect, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -202,7 +209,6 @@ export const stripeWebhookHandler = async (req, res) => {
   }
 
   // Idempotency check
-  const StripeEvent = require('../models/StripeEvent.js').default;
   const alreadyProcessed = await StripeEvent.findById(event.id);
   if (alreadyProcessed) {
     console.log(`[Stripe Webhook] Event ${event.id} already processed. Skipping.`);
@@ -234,7 +240,6 @@ export const stripeWebhookHandler = async (req, res) => {
           break;
         }
 
-        const mongoose = require('mongoose');
         const session = await mongoose.startSession();
 
         try {
@@ -266,7 +271,7 @@ export const stripeWebhookHandler = async (req, res) => {
             const fundedLoanDoc = fundedLoan[0];
 
             // 3. Generate RepaymentSchedule instalments
-            const { generateSchedule } = require('../utils/emi.js');
+            // generateSchedule is already imported at the top
             const instalments = generateSchedule(
               fundedLoanDoc._id,
               loanRequest.amount,
