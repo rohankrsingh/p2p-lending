@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Landmark,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -29,6 +30,7 @@ const lenderNav = [
   { label: 'Marketplace',    href: '/lender/marketplace',   icon: Store },
   { label: 'My Investments', href: '/lender/investments',   icon: TrendingUp },
   { label: 'Payouts',        href: '/lender/payouts',       icon: Wallet },
+  { label: 'Stripe Setup',   href: '/lender/onboarding',    icon: ShieldCheck },
 ]
 
 export default function Sidebar() {

@@ -15,6 +15,7 @@ import LenderDashboard from '@/pages/lender/Dashboard'
 import LenderMarketplace from '@/pages/lender/Marketplace'
 import LenderInvestments from '@/pages/lender/Investments'
 import LenderPayouts from '@/pages/lender/Payouts'
+import LenderOnboarding from '@/pages/lender/Onboarding'
 
 // Layout guards
 import RoleGuard from '@/components/layout/RoleGuard'
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/lender/marketplace"  element={<LenderMarketplace />} />
         <Route path="/lender/investments"  element={<LenderInvestments />} />
         <Route path="/lender/payouts"      element={<LenderPayouts />} />
+        <Route path="/lender/onboarding"   element={<LenderOnboarding />} />
       </Route>
 
       {/* Default redirect */}

@@ -239,10 +239,11 @@ router.get('/lender/investments', protect, requireRole('lender'), async (req, re
 });
 
 /**
- * POST /api/loans/:id/invest
- * Fund a pending loan request - lender locks funding, creates FundedLoan, repayment schedule, and transaction log
+ * POST /api/loans/:id/fund
+ * Initiates funding for a pending loan request via Stripe PaymentIntent
+ * Lender only
  */
-router.post('/:id/invest', protect, requireRole('lender'), async (req, res) => {
+router.post('/:id/fund', protect, requireRole('lender'), async (req, res) => {
   try {
     const loan = await LoanRequest.findById(req.params.id);
     if (!loan) {
@@ -253,52 +254,26 @@ router.post('/:id/invest', protect, requireRole('lender'), async (req, res) => {
       return res.status(400).json({ message: 'Only pending loans can be funded' });
     }
 
-    // Verify lender is not the borrower
     if (loan.userId.toString() === req.user.id) {
       return res.status(400).json({ message: 'You cannot fund your own loan request' });
     }
 
-    // Update LoanRequest status
-    loan.status = 'funded';
-    await loan.save();
-
-    // Create FundedLoan
-    const stripePaymentIntentId = `pi_mock_${Math.random().toString(36).substr(2, 9)}`;
-    const fundedLoan = await FundedLoan.create({
-      loanRequestId: loan._id,
-      lenderId: req.user.id,
-      borrowerId: loan.userId,
-      fundedAmount: loan.amount,
-      outstandingBalance: loan.amount,
-      stripePaymentIntentId,
-      status: 'active',
-    });
-
-    // Generate RepaymentSchedule instalments
-    const instalments = generateSchedule(
-      fundedLoan._id,
-      loan.amount,
-      loan.interestRate,
-      loan.tenure,
-      new Date()
-    );
-    await RepaymentSchedule.insertMany(instalments);
-
-    // Create Transaction Log
-    const transaction = await Transaction.create({
-      fromUserId: req.user.id,
-      toUserId: loan.userId,
-      amount: loan.amount,
-      type: 'funding',
-      stripeId: stripePaymentIntentId,
-      loanRequestId: loan._id,
-      fundedLoanId: fundedLoan._id,
+    // Create a Stripe PaymentIntent
+    // amount is in cents (INR)
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: loan.amount * 100,
+      currency: 'inr',
+      payment_method_types: ['card'],
+      metadata: {
+        loanRequestId: loan._id.toString(),
+        lenderId: req.user.id,
+        borrowerId: loan.userId.toString(),
+      },
     });
 
     res.status(201).json({
-      message: 'Loan successfully funded',
-      fundedLoan,
-      transaction,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
