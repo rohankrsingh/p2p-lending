@@ -2,6 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Separator } from '@/components/ui/separator'
+import StripeOnboardingBanner from '@/components/stripe/StripeOnboardingBanner'
+import { useAuthStore } from '@/store/useAuthStore'
 
 /**
  * AppShell — wraps all authenticated routes with the modern shadcn sidebar-08 layout.
@@ -9,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
  */
 export default function AppShell() {
   const location = useLocation()
+  const user = useAuthStore((s) => s.user)
 
   // Generate a page title based on the path
   const getPageTitle = () => {
@@ -44,6 +47,7 @@ export default function AppShell() {
           {/* Main scrollable content area */}
           <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
             <div className="max-w-6xl mx-auto w-full">
+              {user?.role === 'lender' && <StripeOnboardingBanner />}
               <Outlet />
             </div>
           </main>

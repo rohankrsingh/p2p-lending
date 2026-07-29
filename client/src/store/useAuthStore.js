@@ -9,6 +9,16 @@ export const useAuthStore = create(
 
       setUser: (user, token) => set({ user, token }),
 
+      updateUser: (partial) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...partial } : null,
+        })),
+
+      setStripeVerified: (verified) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, stripeVerified: verified } : null,
+        })),
+
       logout: () => set({ user: null, token: null }),
     }),
     {

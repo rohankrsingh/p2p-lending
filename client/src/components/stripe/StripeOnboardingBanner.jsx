@@ -1,0 +1,152 @@
+/**
+ * StripeOnboardingBanner — persistent banner across all lender pages
+ * when the lender hasn't completed Stripe Connect onboarding.
+ *
+ * Dismissible per session. Fetches status on mount to stay in sync.
+ */
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ShieldCheck,
+  X,
+  ArrowRight,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  Banknote,
+  ExternalLink,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { useAuthStore } from '@/store/useAuthStore'
+import api from '@/lib/api'
+
+export default function StripeOnboardingBanner() {
+  const user = useAuthStore((s) => s.user)
+  const updateUser = useAuthStore((s) => s.updateUser)
+  const navigate = useNavigate()
+
+  const [dismissed, setDismissed] = useState(false)
+  const [status, setStatus] = useState({ loading: true, hasAccount: false, stripeVerified: false })
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Don't show for non-lenders or already verified
+  const isLender = user?.role === 'lender'
+
+  const fetchStatus = async (silent = false) => {
+    if (!silent) setStatus((s) => ({ ...s, loading: true }))
+    try {
+      const { data } = await api.get('/stripe/account-status')
+      setStatus({
+        loading: false,
+        hasAccount: data.hasAccount,
+        stripeVerified: data.stripeVerified,
+      })
+      // Sync back to auth store
+      if (data.stripeVerified && !user?.stripeVerified) {
+        updateUser({ stripeVerified: true })
+      }
+    } catch {
+      if (!silent) setStatus({ loading: false, hasAccount: false, stripeVerified: false })
+    }
+  }
+
+  useEffect(() => {
+    if (isLender) fetchStatus()
+  }, [isLender])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchStatus(true)
+    setRefreshing(false)
+  }
+
+  // Conditions to hide the banner
+  if (!isLender) return null
+  if (status.loading) return null
+  if (status.stripeVerified) return null
+  if (dismissed) return null
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/60 via-slate-900/80 to-indigo-950/60 shadow-lg shadow-indigo-900/10 mb-6">
+      {/* Subtle grid pattern overlay */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDQwdjQwSDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTAgMjBoNDBNMjAgMHY0MCIgc3Ryb2tlPSIjMzhhZGY4IiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDYiLz48L3N2Zz4=')] opacity-40" />
+
+      <div className="relative flex items-start gap-4 p-4 sm:p-5">
+        {/* Icon */}
+        <div className="hidden sm:flex w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center shrink-0 mt-0.5">
+          {status.hasAccount ? (
+            <AlertCircle className="w-5 h-5 text-amber-400" />
+          ) : (
+            <ShieldCheck className="w-5 h-5 text-indigo-400" />
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-white">
+              {status.hasAccount
+                ? 'Stripe verification incomplete'
+                : 'Set up payouts to start earning'}
+            </span>
+            <Badge
+              variant="outline"
+              className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] font-mono"
+            >
+              ACTION REQUIRED
+            </Badge>
+          </div>
+
+          <p className="text-xs text-slate-400 mt-1 max-w-lg leading-relaxed">
+            {status.hasAccount
+              ? 'Your Stripe Connect account is pending additional verification. Submit your details to receive borrower repayments and fund loans.'
+              : 'Connect a bank account via Stripe to fund loan requests and receive monthly EMI payouts directly to your account.'}
+          </p>
+
+          {/* Quick stats row */}
+          <div className="flex items-center gap-4 mt-3 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <Banknote className="w-3 h-3 text-indigo-400" /> 2% platform fee
+            </span>
+            <span className="flex items-center gap-1">
+              <ExternalLink className="w-3 h-3 text-indigo-400" /> Secure Stripe hosted UI
+            </span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              size="sm"
+              onClick={() => navigate('/lender/onboarding')}
+              className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs h-8 px-4 shadow-lg shadow-indigo-500/20 cursor-pointer"
+            >
+              {status.hasAccount ? 'Complete Verification' : 'Start Onboarding'}
+              <ArrowRight className="w-3 h-3 ml-1.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-slate-400 hover:text-white hover:bg-slate-800 text-xs h-8 px-2 cursor-pointer"
+            >
+              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only sm:not-sr-only sm:ml-1.5">Refresh</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Close button */}
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 text-slate-600 hover:text-slate-300 transition-colors cursor-pointer p-1 rounded-md hover:bg-slate-800/50"
+          aria-label="Dismiss banner"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}

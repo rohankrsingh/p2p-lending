@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import api from '@/lib/api'
+import { useAuthStore } from '@/store/useAuthStore'
 
 // Stripe account status states
 const STATUS = {
@@ -42,6 +43,7 @@ const STATUS = {
 export default function LenderOnboarding() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const updateUser = useAuthStore((s) => s.updateUser)
   const urlStatus = searchParams.get('status') // 'return' | 'refresh' | null
 
   const [status, setStatus] = useState(STATUS.LOADING)
@@ -57,6 +59,8 @@ export default function LenderOnboarding() {
 
       if (data.stripeVerified) {
         setStatus(STATUS.VERIFIED)
+        // Sync to auth store so the banner disappears across the app
+        updateUser({ stripeVerified: true })
       } else if (data.hasAccount) {
         setStatus(STATUS.PENDING)
       } else {
