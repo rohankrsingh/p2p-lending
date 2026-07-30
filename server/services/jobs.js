@@ -7,6 +7,10 @@
  */
 import RepaymentSchedule from '../models/RepaymentSchedule.js';
 import FundedLoan from '../models/FundedLoan.js';
+import {
+  sendRepaymentReminderEmail,
+  sendOverdueEmail,
+} from '../services/resend.js';
 
 export default function registerJobs(agenda) {
   // ────────────────────────────────────────────────────────────────
@@ -45,10 +49,35 @@ export default function registerJobs(agenda) {
         `[Agenda] mark-overdue: ${overdueLoanIds.length} FundedLoan(s) marked defaulted`
       );
     }
+
+    // ── Send overdue email alerts (fire and forget) ───────────────
+    // Find overdue instalments that were just updated, with borrower info
+    const overdueSchedules = await RepaymentSchedule.find({
+      status: 'overdue',
+      dueDate: { $lt: now },
+    }).populate({
+      path: 'fundedLoanId',
+      populate: { path: 'borrowerId', select: 'name email' },
+    });
+
+    const sentEmails = new Set();
+    for (const s of overdueSchedules) {
+      const borrower = s.fundedLoanId?.borrowerId;
+      if (borrower && !sentEmails.has(borrower.email)) {
+        sentEmails.add(borrower.email);
+        sendOverdueEmail({
+          borrowerEmail: borrower.email,
+          borrowerName: borrower.name,
+          amount: s.emiAmount,
+          dueDate: s.dueDate,
+          instalmentNumber: s.instalmentNumber,
+        });
+      }
+    }
   });
 
   // ────────────────────────────────────────────────────────────────
-  // Job: send-repayment-reminder — log upcoming due instalments
+  // Job: send-repayment-reminder — send email 3 days before due date
   // ────────────────────────────────────────────────────────────────
   agenda.define('send-repayment-reminder', async (job) => {
     const now = new Date();
@@ -63,10 +92,7 @@ export default function registerJobs(agenda) {
       },
     }).populate({
       path: 'fundedLoanId',
-      populate: [
-        { path: 'borrowerId', select: 'name email' },
-        { path: 'lenderId', select: 'name email' },
-      ],
+      populate: { path: 'borrowerId', select: 'name email' },
     });
 
     if (upcoming.length > 0) {
@@ -74,9 +100,19 @@ export default function registerJobs(agenda) {
         `[Agenda] send-repayment-reminder: ${upcoming.length} instalment(s) due within 3 days`
       );
       for (const instalment of upcoming) {
+        const borrower = instalment.fundedLoanId?.borrowerId;
         console.log(
-          `  → ${instalment.fundedLoanId?.borrowerId?.name || 'Unknown'} owes ₹${instalment.emiAmount} by ${instalment.dueDate.toISOString().split('T')[0]}`
+          `  → ${borrower?.name || 'Unknown'} owes ₹${instalment.emiAmount} by ${instalment.dueDate.toISOString().split('T')[0]}`
         );
+        if (borrower) {
+          sendRepaymentReminderEmail({
+            borrowerEmail: borrower.email,
+            borrowerName: borrower.name,
+            amount: instalment.emiAmount,
+            dueDate: instalment.dueDate,
+            instalmentNumber: instalment.instalmentNumber,
+          });
+        }
       }
     } else {
       console.log('[Agenda] send-repayment-reminder: no upcoming instalments');

@@ -21,6 +21,7 @@ import FundedLoan from '../models/FundedLoan.js';
 import RepaymentSchedule from '../models/RepaymentSchedule.js';
 import Transaction from '../models/Transaction.js';
 import { generateSchedule } from '../utils/emi.js';
+import { sendLoanFundedEmail, sendRepaymentReceivedEmail } from '../services/resend.js';
 import { protect, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -299,6 +300,18 @@ export const stripeWebhookHandler = async (req, res) => {
             await session.endSession();
           }
           console.log(`[Stripe Webhook] Successfully funded loan ${loanRequestId}`);
+
+          // Send loan-funded email to borrower (fire and forget)
+          User.findById(borrowerId).then((user) => {
+            if (user) {
+              sendLoanFundedEmail({
+                borrowerEmail: user.email,
+                borrowerName: user.name,
+                amount: parseFloat(paymentIntent.amount) / 100,
+                tenure: 0, // will be populated from loanRequest if needed
+              });
+            }
+          }).catch(() => {});
         }
 
         // ── Repayment payment ─────────────────────────────────────
@@ -410,6 +423,19 @@ export const stripeWebhookHandler = async (req, res) => {
             await session.endSession();
           }
           console.log(`[Stripe Webhook] Successfully processed repayment ${repaymentScheduleId}`);
+
+          // Send repayment-received email to lender (fire and forget)
+          const lenderUser = await User.findById(rl);
+          const borrowerUser = await User.findById(rb);
+          if (lenderUser) {
+            sendRepaymentReceivedEmail({
+              lenderEmail: lenderUser.email,
+              lenderName: lenderUser.name,
+              amount: repaymentAmount,
+              borrowerName: borrowerUser?.name || 'Borrower',
+              instalmentNumber: parseInt(paymentIntent.metadata.instalmentNumber || '0'),
+            });
+          }
         }
         break;
       }
