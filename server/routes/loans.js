@@ -282,6 +282,51 @@ router.post('/:id/fund', protect, requireRole('lender'), async (req, res) => {
 });
 
 /**
+ * GET /api/loans/:id/schedule
+ * Full repayment schedule for a specific loan — lender or borrower (owner)
+ */
+router.get('/:id/schedule', protect, async (req, res) => {
+  try {
+    const loan = await LoanRequest.findById(req.params.id);
+    if (!loan) return res.status(404).json({ message: 'Loan not found' });
+
+    // Borrowers can only see their own loan schedules
+    if (
+      req.user.role === 'borrower' &&
+      loan.userId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const fundedLoan = await FundedLoan.findOne({ loanRequestId: loan._id });
+
+    if (!fundedLoan) {
+      return res.status(404).json({ message: 'Loan has not been funded yet' });
+    }
+
+    // Lenders can only see schedules for loans they funded
+    if (
+      req.user.role === 'lender' &&
+      fundedLoan.lenderId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const schedules = await RepaymentSchedule.find({
+      fundedLoanId: fundedLoan._id,
+    }).sort({ instalmentNumber: 1 });
+
+    res.json({
+      loan,
+      fundedLoan,
+      schedules,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
  * GET /api/loans/:id
  * Full loan detail with EMI preview + month-by-month schedule — lender or borrower (owner)
  */

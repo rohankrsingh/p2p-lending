@@ -4,11 +4,14 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { connectDB } from './utils/db.js';
 
-// Route imports (add more each day as we build them)
+// Route imports
 import authRoutes from './routes/auth.js';
 import loanRoutes from './routes/loans.js';
 import repaymentRoutes from './routes/repayments.js';
 import stripeRoutes, { stripeWebhookHandler } from './routes/stripe.js';
+
+// Agenda scheduler
+import agenda from './services/agenda.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,7 +50,10 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────
-connectDB().then(() => {
+connectDB().then(async () => {
+  await agenda.start();
+  console.log('⏰ Agenda scheduler started');
+
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
