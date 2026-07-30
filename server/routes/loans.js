@@ -14,6 +14,91 @@ const router = express.Router();
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * GET /api/loans/borrower/dashboard
+ * Borrower dashboard — summary cards, active loans with progress, upcoming EMIs, overdue alert
+ */
+router.get('/borrower/dashboard', protect, requireRole('borrower'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const fundedLoans = await FundedLoan.find({ borrowerId: userId }).populate({
+      path: 'loanRequestId',
+      select: 'amount tenure interestRate reason',
+    });
+
+    const fundedLoanIds = fundedLoans.map((l) => l._id);
+    const schedules = await RepaymentSchedule.find({
+      fundedLoanId: { $in: fundedLoanIds },
+    }).sort({ dueDate: 1 });
+
+    const pendingLoans = await LoanRequest.find({
+      userId,
+      status: 'pending',
+    }).sort({ createdAt: -1 });
+
+    let totalBorrowed = 0;
+    let totalOutstanding = 0;
+    let activeLoanCount = 0;
+    let overdueCount = 0;
+    const upcoming = [];
+
+    fundedLoans.forEach((fl) => {
+      totalBorrowed += fl.fundedAmount || 0;
+      totalOutstanding += fl.outstandingBalance || 0;
+      if (fl.status === 'active' || fl.status === 'repaying') activeLoanCount++;
+    });
+
+    schedules.forEach((s) => {
+      if (s.status === 'overdue') overdueCount++;
+      if (s.status !== 'paid' && upcoming.length < 3) {
+        upcoming.push({
+          _id: s._id,
+          instalmentNumber: s.instalmentNumber,
+          dueDate: s.dueDate,
+          emiAmount: s.emiAmount,
+          status: s.status,
+          fundedLoanId: s.fundedLoanId,
+        });
+      }
+    });
+
+    const activeLoanDetails = fundedLoans
+      .filter((fl) => fl.status === 'active' || fl.status === 'repaying')
+      .map((fl) => {
+        const loanSchedules = schedules.filter(
+          (s) => s.fundedLoanId.toString() === fl._id.toString()
+        );
+        const totalInstalments = loanSchedules.length;
+        const paidInstalments = loanSchedules.filter((s) => s.status === 'paid').length;
+        const progress = totalInstalments > 0 ? Math.round((paidInstalments / totalInstalments) * 100) : 0;
+        return {
+          _id: fl._id,
+          fundedAmount: fl.fundedAmount,
+          outstandingBalance: fl.outstandingBalance,
+          status: fl.status,
+          fundedAt: fl.fundedAt,
+          tenure: fl.loanRequestId?.tenure || 0,
+          interestRate: fl.loanRequestId?.interestRate || 12,
+          reason: fl.loanRequestId?.reason || '',
+          progress,
+          totalInstalments,
+          paidInstalments,
+          emiAmount: loanSchedules.length > 0 ? loanSchedules[0].emiAmount : 0,
+        };
+      });
+
+    res.json({
+      stats: { totalBorrowed, totalOutstanding, activeLoanCount, overdueCount, pendingLoanCount: pendingLoans.length },
+      activeLoans: activeLoanDetails,
+      upcomingRepayments: upcoming,
+      pendingLoans,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
  * POST /api/loans
  * Create a new loan request — borrower only
  */
