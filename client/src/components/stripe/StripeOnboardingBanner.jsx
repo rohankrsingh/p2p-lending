@@ -76,7 +76,7 @@ export default function StripeOnboardingBanner() {
         {/* Icon */}
         <div className="hidden sm:flex w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center shrink-0 mt-0.5">
           {status.hasAccount ? (
-            <AlertCircle className="w-5 h-5 text-amber-400" />
+            <AlertCircle className="w-5 h-5 text-warning" />
           ) : (
             <ShieldCheck className="w-5 h-5 text-indigo-400" />
           )}
@@ -85,27 +85,27 @@ export default function StripeOnboardingBanner() {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-white">
+            <span className="text-sm font-semibold text-foreground">
               {status.hasAccount
                 ? 'Stripe verification incomplete'
                 : 'Set up payouts to start earning'}
             </span>
             <Badge
               variant="outline"
-              className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] font-mono"
+              className="border-warning/30 text-warning bg-warning/10 text-[10px] font-mono"
             >
               ACTION REQUIRED
             </Badge>
           </div>
 
-          <p className="text-xs text-slate-400 mt-1 max-w-lg leading-relaxed">
+          <p className="text-xs text-muted-foreground mt-1 max-w-lg leading-relaxed">
             {status.hasAccount
               ? 'Your Stripe Connect account is pending additional verification. Submit your details to receive borrower repayments and fund loans.'
               : 'Connect a bank account via Stripe to fund loan requests and receive monthly EMI payouts directly to your account.'}
           </p>
 
           {/* Quick stats row */}
-          <div className="flex items-center gap-4 mt-3 text-[10px] text-slate-500">
+          <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground/70">
             <span className="flex items-center gap-1">
               <Banknote className="w-3 h-3 text-indigo-400" /> 2% platform fee
             </span>
@@ -119,7 +119,7 @@ export default function StripeOnboardingBanner() {
             <Button
               size="sm"
               onClick={() => navigate('/lender/onboarding')}
-              className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs h-8 px-4 shadow-lg shadow-indigo-500/20 cursor-pointer"
+              className="bg-indigo-500 hover:bg-indigo-400 text-foreground font-semibold text-xs h-8 px-4 shadow-lg shadow-indigo-500/20 cursor-pointer"
             >
               {status.hasAccount ? 'Complete Verification' : 'Start Onboarding'}
               <ArrowRight className="w-3 h-3 ml-1.5" />
@@ -130,7 +130,7 @@ export default function StripeOnboardingBanner() {
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="text-slate-400 hover:text-white hover:bg-slate-800 text-xs h-8 px-2 cursor-pointer"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-8 px-2 cursor-pointer"
             >
               <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only sm:not-sr-only sm:ml-1.5">Refresh</span>
@@ -141,7 +141,7 @@ export default function StripeOnboardingBanner() {
         {/* Close button */}
         <button
           onClick={() => setDismissed(true)}
-          className="shrink-0 text-slate-600 hover:text-slate-300 transition-colors cursor-pointer p-1 rounded-md hover:bg-slate-800/50"
+          className="shrink-0 text-muted-foreground/50 hover:text-foreground/80 transition-colors cursor-pointer p-1 rounded-md hover:bg-muted/50"
           aria-label="Dismiss banner"
         >
           <X className="w-4 h-4" />

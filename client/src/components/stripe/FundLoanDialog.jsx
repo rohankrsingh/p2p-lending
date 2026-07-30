@@ -76,14 +76,14 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Amount summary */}
-      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 text-center space-y-1">
-        <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wide">
+      <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 text-center space-y-1">
+        <p className="text-[10px] text-muted-foreground/70 uppercase font-semibold tracking-wide">
           Payment Amount
         </p>
-        <p className="text-2xl font-bold text-white font-mono">
+        <p className="text-2xl font-bold text-foreground font-mono">
           ₹{loan.amount.toLocaleString('en-IN')}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           One-time {loan.tenure}-month loan funding
         </p>
       </div>
@@ -96,7 +96,7 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
       />
 
       {errorMessage && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive/80">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>
@@ -105,7 +105,7 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
       <Button
         type="submit"
         disabled={!stripe || !elements || submitting}
-        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold h-11 shadow-lg shadow-emerald-500/10 cursor-pointer"
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-lg shadow-primary/10 cursor-pointer"
       >
         {submitting ? (
           <>
@@ -120,7 +120,7 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
         )}
       </Button>
 
-      <p className="text-[10px] text-slate-600 text-center">
+      <p className="text-[10px] text-muted-foreground/50 text-center">
         Secured by Stripe · Your card will be charged immediately
       </p>
     </form>
@@ -181,49 +181,49 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
 
     return (
       <AlertDialog open={open} onOpenChange={onOpenChange}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
-            <AlertDialogMedia className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <AlertDialogMedia className="bg-primary/10 border border-primary/20 text-primary">
               <ShieldCheck className="size-5" />
             </AlertDialogMedia>
-            <AlertDialogTitle className="text-white text-base font-bold">
+            <AlertDialogTitle className="text-foreground text-base font-bold">
               Confirm Loan Funding
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 text-xs">
+            <AlertDialogDescription className="text-muted-foreground text-xs">
               You are about to fund this loan request. The amount will be charged to your card via Stripe.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {/* Investment summary card */}
-          <div className="space-y-3 bg-slate-950/60 rounded-xl border border-slate-800/80 p-4">
+          <div className="space-y-3 bg-background/60 rounded-xl border border-border/80 p-4">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Loan Amount</span>
-              <span className="font-bold text-white font-mono">
+              <span className="text-muted-foreground">Loan Amount</span>
+              <span className="font-bold text-foreground font-mono">
                 ₹{loan.amount.toLocaleString('en-IN')}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Tenure</span>
-              <span className="font-semibold text-white">{loan.tenure} months</span>
+              <span className="text-muted-foreground">Tenure</span>
+              <span className="font-semibold text-foreground">{loan.tenure} months</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Interest Rate</span>
-              <span className="font-semibold text-emerald-400">12% p.a.</span>
+              <span className="text-muted-foreground">Interest Rate</span>
+              <span className="font-semibold text-primary">12% p.a.</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Monthly EMI</span>
-              <span className="font-semibold text-white font-mono">₹{emi.emi.toLocaleString('en-IN')}</span>
+              <span className="text-muted-foreground">Monthly EMI</span>
+              <span className="font-semibold text-foreground font-mono">₹{emi.emi.toLocaleString('en-IN')}</span>
             </div>
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800">
-              <span className="text-slate-400">Total Interest Earned</span>
-              <span className="font-semibold text-emerald-400 font-mono">
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-border">
+              <span className="text-muted-foreground">Total Interest Earned</span>
+              <span className="font-semibold text-primary font-mono">
                 +₹{emi.totalInterest.toLocaleString('en-IN')}
               </span>
             </div>
 
             {loan.userId?.name && (
-              <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-500">
-                <Badge className="bg-slate-800 text-slate-300 text-[10px] font-mono border-0">
+              <div className="flex items-center gap-2 pt-1 text-[10px] text-muted-foreground/70">
+                <Badge className="bg-muted text-foreground/80 text-[10px] font-mono border-0">
                   Borrower: {loan.userId.name}
                 </Badge>
               </div>
@@ -231,7 +231,7 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive/80">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -240,14 +240,14 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={loading}
-              className="text-slate-400 hover:text-white border-slate-800 cursor-pointer"
+              className="text-muted-foreground hover:text-foreground border-border cursor-pointer"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
               disabled={loading}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold cursor-pointer"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer"
             >
               {loading ? (
                 <>
@@ -272,10 +272,10 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
     if (!clientSecret) {
       return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-sm">
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-sm">
             <div className="flex flex-col items-center py-12 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-              <p className="text-slate-400 text-sm">Initialising payment session…</p>
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground text-sm">Initialising payment session…</p>
             </div>
           </DialogContent>
         </Dialog>
@@ -284,13 +284,13 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-sm">
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-white text-base flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-400" />
+            <DialogTitle className="text-foreground text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-primary" />
               Complete Payment
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
+            <DialogDescription className="text-muted-foreground text-xs">
               Enter your card details to fund this loan securely.
             </DialogDescription>
           </DialogHeader>

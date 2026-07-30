@@ -110,8 +110,8 @@ export default function Sidebar() {
             className={cn(
               'text-xs capitalize',
               user?.role === 'borrower'
-                ? 'border-blue-500/40 text-blue-500'
-                : 'border-emerald-500/40 text-emerald-500'
+                ? 'border-primary/40 text-primary'
+                : 'border-primary/40 text-primary'
             )}
           >
             {user?.role}

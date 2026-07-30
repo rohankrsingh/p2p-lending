@@ -91,17 +91,17 @@ export function AppSidebar({ ...props }) {
   }, [user])
 
   return (
-    <Sidebar variant="inset" className="border-slate-800 bg-[#0a0a0e] text-white" {...props}>
-      <SidebarHeader className="border-b border-slate-800/60 py-4 px-4">
+    <Sidebar variant="inset" className="border-border bg-[#0a0a0e] text-foreground" {...props}>
+      <SidebarHeader className="border-b border-border/60 py-4 px-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="hover:bg-slate-800/40">
-              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+            <SidebarMenuButton size="lg" className="hover:bg-muted/40">
+              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20">
                 <Landmark className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight ml-2">
-                <span className="font-bold text-white tracking-tight">P2P Lend</span>
-                <span className="text-[10px] text-emerald-400 font-semibold tracking-wide uppercase">
+                <span className="font-bold text-foreground tracking-tight">P2P Lend</span>
+                <span className="text-[10px] text-primary font-semibold tracking-wide uppercase">
                   {user?.role === "borrower" ? "Borrower Portal" : "Investor Portal"}
                 </span>
               </div>
@@ -114,7 +114,7 @@ export function AppSidebar({ ...props }) {
         <NavMain items={navItems} />
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-slate-800/60 p-3">
+      <SidebarFooter className="border-t border-border/60 p-3">
         <NavUser />
       </SidebarFooter>
     </Sidebar>

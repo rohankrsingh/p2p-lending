@@ -120,7 +120,7 @@ export default function CreateLoan() {
       {/* ── Header ── */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="outline" className="border-blue-500/40 text-blue-500 bg-blue-500/10">
+          <Badge variant="outline" className="border-primary/40 text-primary bg-primary/10">
             Borrower Desk
           </Badge>
           <span className="text-xs text-muted-foreground">• Fast Approval</span>
@@ -314,7 +314,7 @@ export default function CreateLoan() {
                 <Badge variant="secondary" className="text-xs font-semibold">
                   Live EMI Calculator
                 </Badge>
-                <div className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                <div className="flex items-center gap-1 text-xs text-primary font-medium">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Instant Quote</span>
                 </div>
@@ -351,7 +351,7 @@ export default function CreateLoan() {
                     Annual Interest Rate
                     <Info className="w-3.5 h-3.5 text-muted-foreground/70" />
                   </span>
-                  <span className="font-semibold font-mono text-emerald-500">
+                  <span className="font-semibold font-mono text-primary">
                     12.0% p.a.
                   </span>
                 </div>
@@ -435,7 +435,7 @@ export default function CreateLoan() {
             </CardContent>
 
             <CardFooter className="bg-muted/30 border-t border-border/50 py-3 text-xs text-muted-foreground flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
               <span>No hidden charges. Automated EMI collection via UPI / Netbanking.</span>
             </CardFooter>
           </Card>

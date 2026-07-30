@@ -79,9 +79,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-        <p className="text-slate-400 text-sm mt-3">Loading portfolio...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-foreground">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground text-sm mt-3">Loading portfolio...</p>
       </div>
     )
   }
@@ -103,35 +103,35 @@ export default function Dashboard() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="space-y-8 text-white"
+      className="space-y-8 text-foreground"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
+            <Badge variant="outline" className="border-primary/40 text-primary bg-primary/10">
               Investor Desk
             </Badge>
-            <span className="text-xs text-slate-400">• Portfolio Control</span>
+            <span className="text-xs text-muted-foreground">• Portfolio Control</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-white">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
             Lender Dashboard
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Overview of your active investments, interest returns, and capital allocations.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             onClick={() => navigate('/lender/marketplace')}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold h-9 text-xs px-4 shadow-lg shadow-emerald-500/10 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 text-xs px-4 shadow-lg shadow-primary/10 cursor-pointer"
           >
             Invest Capital <Store className="w-3.5 h-3.5 ml-2" />
           </Button>
           <Button
             variant="outline" size="sm"
             onClick={fetchDashboard}
-            className="border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-white cursor-pointer h-9 px-3"
+            className="border-border bg-card hover:bg-muted text-foreground cursor-pointer h-9 px-3"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -141,10 +141,10 @@ export default function Dashboard() {
       {/* Stats Grid — staggered card entrance */}
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Active Portfolio Value', value: `₹${stats.totalInvested.toLocaleString('en-IN')}`, desc: 'Total capital deployed', icon: Landmark, color: 'text-white' },
-          { label: 'Interest & Yield Earned', value: `₹${stats.totalInterestEarned.toLocaleString('en-IN')}`, desc: 'Gross interest returns', icon: TrendingUp, color: 'text-emerald-400' },
-          { label: 'Active Micro-Loans', value: `${stats.activeInvestments}`, desc: 'Lent profiles in repaying state', icon: Users, color: 'text-white' },
-          { label: 'Expected Monthly Inflow', value: `₹${stats.expectedMonthlyPayout.toLocaleString('en-IN')}`, desc: 'Projected EMI settlements', icon: DollarSign, color: 'text-white' },
+          { label: 'Active Portfolio Value', value: `₹${stats.totalInvested.toLocaleString('en-IN')}`, desc: 'Total capital deployed', icon: Landmark, color: 'text-foreground' },
+          { label: 'Interest & Yield Earned', value: `₹${stats.totalInterestEarned.toLocaleString('en-IN')}`, desc: 'Gross interest returns', icon: TrendingUp, color: 'text-primary' },
+          { label: 'Active Micro-Loans', value: `${stats.activeInvestments}`, desc: 'Lent profiles in repaying state', icon: Users, color: 'text-foreground' },
+          { label: 'Expected Monthly Inflow', value: `₹${stats.expectedMonthlyPayout.toLocaleString('en-IN')}`, desc: 'Projected EMI settlements', icon: DollarSign, color: 'text-foreground' },
         ].map((card, i) => (
           <motion.div
             key={card.label}
@@ -153,19 +153,19 @@ export default function Dashboard() {
             animate="visible"
             variants={statsCardVariants}
           >
-            <Card className="border-slate-800 bg-slate-900/60 shadow-md hover:border-slate-700 transition-all">
+            <Card className="border-border bg-card shadow-md hover:border-border transition-all">
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardDescription className="text-slate-400 text-xs uppercase font-medium">
+                <CardDescription className="text-muted-foreground text-xs uppercase font-medium">
                   {card.label}
                 </CardDescription>
-                <IconWrap icon={card.icon} className="bg-emerald-500/10 text-emerald-400" />
+                <IconWrap icon={card.icon} className="bg-primary/10 text-primary" />
               </CardHeader>
               <CardContent className="pb-2">
                 <CardTitle className={`text-2xl font-bold font-mono ${card.color}`}>
                   {card.value}
                 </CardTitle>
               </CardContent>
-              <CardFooter className="pt-0 text-[10px] text-slate-500">{card.desc}</CardFooter>
+              <CardFooter className="pt-0 text-[10px] text-muted-foreground/70">{card.desc}</CardFooter>
             </Card>
           </motion.div>
         ))}
@@ -173,13 +173,13 @@ export default function Dashboard() {
 
       {/* Search bar - inspired by 21st.dev Financial Dashboard */}
       <motion.div variants={itemVariants} className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
         <input
           type="text"
           placeholder="Search investments by borrower name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 outline-none transition-all"
+          className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary-500/30 focus:border-primary/50 outline-none transition-all"
         />
       </motion.div>
 
@@ -188,29 +188,29 @@ export default function Dashboard() {
         {/* Active Portfolios */}
         <div className="lg:col-span-7 space-y-6">
           <motion.div variants={itemVariants}>
-            <Card className="border-slate-800 bg-slate-900/40 backdrop-blur-md">
-              <CardHeader className="pb-4 border-b border-slate-900">
+            <Card className="border-border bg-muted/50 backdrop-blur-md">
+              <CardHeader className="pb-4 border-b border-border">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-base font-semibold">Active Deployed Capital</CardTitle>
-                    <CardDescription className="text-slate-400 text-xs">Overview of recent micro-loans funded by you.</CardDescription>
+                    <CardDescription className="text-muted-foreground text-xs">Overview of recent micro-loans funded by you.</CardDescription>
                   </div>
-                  <Link to="/lender/investments" className="text-xs text-emerald-400 hover:underline font-semibold flex items-center">
+                  <Link to="/lender/investments" className="text-xs text-primary hover:underline font-semibold flex items-center">
                     All Portfolios <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Link>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 {filteredInvestments.length === 0 ? (
-                  <div className="p-12 text-center text-slate-500">
-                    <Activity className="w-8 h-8 text-slate-700 mx-auto mb-3" />
+                  <div className="p-12 text-center text-muted-foreground/70">
+                    <Activity className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-semibold">{searchQuery ? 'No matching investments' : 'No investments yet'}</p>
-                    <p className="text-xs text-slate-600 mt-1">
+                    <p className="text-xs text-muted-foreground/50 mt-1">
                       {searchQuery ? 'Try a different search term.' : 'Visit the marketplace to fund your first loan.'}
                     </p>
                     {!searchQuery && (
                       <Button onClick={() => navigate('/lender/marketplace')}
-                        className="mt-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs h-8 cursor-pointer">
+                        className="mt-4 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs h-8 cursor-pointer">
                         Browse Marketplace
                       </Button>
                     )}
@@ -226,24 +226,24 @@ export default function Dashboard() {
                           className="p-5 flex items-center justify-between gap-4 transition-colors rounded-lg"
                         >
                           <div className="flex items-center gap-3">
-                            <IconWrap icon={Users} className="bg-emerald-500/10 text-emerald-400 shrink-0" />
+                            <IconWrap icon={Users} className="bg-primary/10 text-primary shrink-0" />
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-slate-200">{borrowerName}</span>
-                                <span className="text-[10px] text-slate-500 font-mono">ID: {inv._id.slice(-6).toUpperCase()}</span>
+                                <span className="text-xs font-semibold text-foreground/90">{borrowerName}</span>
+                                <span className="text-[10px] text-muted-foreground/70 font-mono">ID: {inv._id.slice(-6).toUpperCase()}</span>
                               </div>
-                              <p className="text-base font-bold text-white font-mono">₹{inv.fundedAmount.toLocaleString('en-IN')}</p>
-                              <p className="text-xs text-slate-400 font-mono">Outstanding: ₹{inv.outstandingBalance.toLocaleString('en-IN')}</p>
+                              <p className="text-base font-bold text-foreground font-mono">₹{inv.fundedAmount.toLocaleString('en-IN')}</p>
+                              <p className="text-xs text-muted-foreground font-mono">Outstanding: ₹{inv.outstandingBalance.toLocaleString('en-IN')}</p>
                             </div>
                           </div>
                           <div className="text-right space-y-1">
-                            <div className="text-[10px] text-slate-500 font-mono uppercase">
+                            <div className="text-[10px] text-muted-foreground/70 font-mono uppercase">
                               {inv.loanRequestId?.tenure} Mos @ {inv.loanRequestId?.interestRate || 12}%
                             </div>
                             <Badge className={
                               inv.status === 'active' || inv.status === 'repaying'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] font-mono'
-                                : 'bg-blue-500/10 text-blue-400 border-blue-500/30 text-[10px] font-mono'
+                                ? 'bg-primary/10 text-primary border-primary/30 text-[10px] font-mono'
+                                : 'bg-primary/10 text-primary border-primary/30 text-[10px] font-mono'
                             }>
                               {inv.status === 'active' || inv.status === 'repaying' ? 'REPAYING' : 'COMPLETED'}
                             </Badge>
@@ -261,14 +261,14 @@ export default function Dashboard() {
         {/* Recent Transactions */}
         <div className="lg:col-span-5 space-y-6">
           <motion.div variants={itemVariants}>
-            <Card className="border-slate-800 bg-slate-900/40 backdrop-blur-md">
-              <CardHeader className="pb-4 border-b border-slate-900">
+            <Card className="border-border bg-muted/50 backdrop-blur-md">
+              <CardHeader className="pb-4 border-b border-border">
                 <CardTitle className="text-base font-semibold">Recent Wallet Movement</CardTitle>
-                <CardDescription className="text-slate-400 text-xs">Funding outflows and repayment inflows.</CardDescription>
+                <CardDescription className="text-muted-foreground text-xs">Funding outflows and repayment inflows.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {recentTransactions.length === 0 ? (
-                  <p className="p-6 text-slate-500 text-xs text-center">No recent wallet transactions.</p>
+                  <p className="p-6 text-muted-foreground/70 text-xs text-center">No recent wallet transactions.</p>
                 ) : (
                   <div className="divide-y divide-slate-900">
                     {recentTransactions.map((tx) => {
@@ -281,26 +281,26 @@ export default function Dashboard() {
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                              isOutflow ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
+                              isOutflow ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
                             }`}>
                               {isOutflow ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                             </div>
                             <div>
-                              <p className="font-semibold text-white text-sm">
+                              <p className="font-semibold text-foreground text-sm">
                                 {isOutflow ? 'Capital Outflow' : 'EMI Settlement'}
                               </p>
-                              <p className="text-[10px] text-slate-500">
+                              <p className="text-[10px] text-muted-foreground/70">
                                 {isOutflow
                                   ? `Funded loan ${tx.fundedLoanId?.toString().slice(-6).toUpperCase()}`
                                   : `From ${tx.fromUserId?.name || 'Borrower'}`}
                               </p>
                             </div>
                           </div>
-                          <div className={`text-right font-mono ${isOutflow ? '' : 'bg-emerald-500/10 px-2 py-1 rounded-lg'}`}>
-                            <p className={`font-bold ${isOutflow ? 'text-slate-300' : 'text-emerald-400'}`}>
+                          <div className={`text-right font-mono ${isOutflow ? '' : 'bg-primary/10 px-2 py-1 rounded-lg'}`}>
+                            <p className={`font-bold ${isOutflow ? 'text-foreground/80' : 'text-primary'}`}>
                               {isOutflow ? '-' : '+'}₹{tx.amount.toLocaleString('en-IN')}
                             </p>
-                            <p className="text-[9px] text-slate-600">
+                            <p className="text-[9px] text-muted-foreground/50">
                               {new Date(tx.createdAt).toLocaleDateString('en-IN')}
                             </p>
                           </div>
@@ -315,24 +315,24 @@ export default function Dashboard() {
 
           {/* Quick stats summary - inspired by 21st.dev service cards */}
           <motion.div variants={itemVariants}>
-            <Card className="border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 shadow-md">
+            <Card className="border-border bg-gradient-to-b from-slate-900 to-slate-950 shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Portfolio at a Glance
+                  <ShieldCheck className="w-4 h-4 text-primary" /> Portfolio at a Glance
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs space-y-3">
-                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-950/60 border border-slate-800/60">
-                  <span className="text-slate-400">Active loans</span>
-                  <span className="font-semibold font-mono text-white">{stats.activeInvestments}</span>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/60 border border-border/60">
+                  <span className="text-muted-foreground">Active loans</span>
+                  <span className="font-semibold font-mono text-foreground">{stats.activeInvestments}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-950/60 border border-slate-800/60">
-                  <span className="text-slate-400">Expected monthly</span>
-                  <span className="font-semibold font-mono text-emerald-400">₹{stats.expectedMonthlyPayout.toLocaleString('en-IN')}</span>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/60 border border-border/60">
+                  <span className="text-muted-foreground">Expected monthly</span>
+                  <span className="font-semibold font-mono text-primary">₹{stats.expectedMonthlyPayout.toLocaleString('en-IN')}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-950/60 border border-slate-800/60">
-                  <span className="text-slate-400">Total invested</span>
-                  <span className="font-semibold font-mono text-white">₹{stats.totalInvested.toLocaleString('en-IN')}</span>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/60 border border-border/60">
+                  <span className="text-muted-foreground">Total invested</span>
+                  <span className="font-semibold font-mono text-foreground">₹{stats.totalInvested.toLocaleString('en-IN')}</span>
                 </div>
               </CardContent>
             </Card>

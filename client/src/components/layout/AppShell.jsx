@@ -31,15 +31,15 @@ export default function AppShell() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-slate-950 w-full text-slate-100">
+      <div className="flex min-h-screen bg-background w-full text-foreground">
         <AppSidebar />
         
-        <SidebarInset className="bg-[#050508] border-l border-slate-900 flex-1 flex flex-col">
+        <SidebarInset className="bg-[#050508] border-l border-border flex-1 flex flex-col">
           {/* Header Bar */}
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-900 px-4 sm:px-6 relative z-10 bg-[#050508]/80 backdrop-blur-md">
-            <SidebarTrigger className="text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg cursor-pointer" />
-            <Separator orientation="vertical" className="h-4 bg-slate-800" />
-            <h2 className="text-sm font-semibold tracking-tight text-white m-0">
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6 relative z-10 bg-[#050508]/80 backdrop-blur-md">
+            <SidebarTrigger className="text-muted-foreground hover:text-foreground hover:bg-card rounded-lg cursor-pointer" />
+            <Separator orientation="vertical" className="h-4 bg-muted" />
+            <h2 className="text-sm font-semibold tracking-tight text-foreground m-0">
               {getPageTitle()}
             </h2>
           </header>
