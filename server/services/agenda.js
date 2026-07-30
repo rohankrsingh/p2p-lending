@@ -5,11 +5,12 @@
  * exposes it so jobs can be registered and the scheduler started.
  */
 import Agenda from 'agenda';
-import mongoose from 'mongoose';
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/p2p';
 
 const agenda = new Agenda({
   db: {
-    address: mongoose.connection.client.s.url,
+    address: MONGO_URI,
     collection: 'agendaJobs',
   },
   processEvery: '30 seconds',
