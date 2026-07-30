@@ -1,4 +1,5 @@
 import express from 'express';
+import stripe from '../services/stripe.js';
 import RepaymentSchedule from '../models/RepaymentSchedule.js';
 import FundedLoan from '../models/FundedLoan.js';
 import Transaction from '../models/Transaction.js';
@@ -12,11 +13,9 @@ const router = express.Router();
  */
 router.get('/borrower', protect, requireRole('borrower'), async (req, res) => {
   try {
-    // 1. Find all funded loans for this borrower
     const fundedLoans = await FundedLoan.find({ borrowerId: req.user.id });
     const fundedLoanIds = fundedLoans.map((l) => l._id);
 
-    // 2. Find all repayment schedule items matching these loans
     const schedules = await RepaymentSchedule.find({
       fundedLoanId: { $in: fundedLoanIds },
     })
@@ -36,12 +35,12 @@ router.get('/borrower', protect, requireRole('borrower'), async (req, res) => {
 });
 
 /**
- * POST /api/repayments/:id/pay
- * Pay a single repayment instalment (simulated/mock payment for Day 10)
+ * POST /api/repayments/:scheduleId/pay
+ * Borrower initiates an EMI PaymentIntent via Stripe
  */
-router.post('/:id/pay', protect, requireRole('borrower'), async (req, res) => {
+router.post('/:scheduleId/pay', protect, requireRole('borrower'), async (req, res) => {
   try {
-    const repayment = await RepaymentSchedule.findById(req.params.id);
+    const repayment = await RepaymentSchedule.findById(req.params.scheduleId);
     if (!repayment) {
       return res.status(404).json({ message: 'Repayment instalment not found' });
     }
@@ -50,57 +49,36 @@ router.post('/:id/pay', protect, requireRole('borrower'), async (req, res) => {
       return res.status(400).json({ message: 'Instalment is already paid' });
     }
 
-    // Find the funded loan associated with this repayment
     const fundedLoan = await FundedLoan.findById(repayment.fundedLoanId);
     if (!fundedLoan) {
       return res.status(404).json({ message: 'Associated funded loan not found' });
     }
 
-    // Verify ownership
     if (fundedLoan.borrowerId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied: not your loan' });
     }
 
-    // Perform simulated payment updates
-    repayment.status = 'paid';
-    repayment.paidAt = new Date();
-    repayment.stripePaymentIntentId = `pi_mock_${Math.random().toString(36).substr(2, 9)}`;
-    await repayment.save();
-
-    // Update FundedLoan outstanding balance
-    const newBalance = Math.max(0, fundedLoan.outstandingBalance - repayment.emiAmount);
-    fundedLoan.outstandingBalance = newBalance;
-
-    // Check if the loan is fully completed
-    const remainingUnpaidCount = await RepaymentSchedule.countDocuments({
-      fundedLoanId: fundedLoan._id,
-      status: { $ne: 'paid' },
-    });
-
-    if (remainingUnpaidCount === 0 || newBalance === 0) {
-      fundedLoan.status = 'completed';
-    } else {
-      fundedLoan.status = 'repaying';
-    }
-    await fundedLoan.save();
-
-    // Log the transaction
-    const transaction = await Transaction.create({
-      fromUserId: req.user.id,
-      toUserId: fundedLoan.lenderId,
-      amount: repayment.emiAmount,
-      type: 'repayment',
-      stripeId: repayment.stripePaymentIntentId,
-      fundedLoanId: fundedLoan._id,
-      repaymentScheduleId: repayment._id,
+    // Create a Stripe PaymentIntent for this EMI
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(repayment.emiAmount * 100),
+      currency: 'inr',
+      payment_method_types: ['card'],
+      metadata: {
+        type: 'repayment',
+        repaymentScheduleId: repayment._id.toString(),
+        fundedLoanId: fundedLoan._id.toString(),
+        borrowerId: req.user.id,
+        lenderId: fundedLoan.lenderId.toString(),
+        instalmentNumber: String(repayment.instalmentNumber),
+        emiAmount: String(repayment.emiAmount),
+      },
     });
 
     res.json({
-      message: 'Repayment instalment paid successfully (mocked)',
-      repayment,
-      transaction,
-      outstandingBalance: fundedLoan.outstandingBalance,
-      loanStatus: fundedLoan.status,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      instalment: repayment.instalmentNumber,
+      emiAmount: repayment.emiAmount,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

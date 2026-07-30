@@ -233,75 +233,184 @@ export const stripeWebhookHandler = async (req, res) => {
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object;
-        const { loanRequestId, lenderId, borrowerId } = paymentIntent.metadata;
+        const { loanRequestId, lenderId, borrowerId, type } = paymentIntent.metadata;
 
-        if (!loanRequestId) {
-          console.log('[Stripe Webhook] payment_intent.succeeded without loanRequestId metadata');
-          break;
+        // ── Loan funding payment ───────────────────────────────────
+        if (type !== 'repayment') {
+          if (!loanRequestId) {
+            console.log('[Stripe Webhook] payment_intent.succeeded without loanRequestId metadata');
+            break;
+          }
+
+          const session = await mongoose.startSession();
+
+          try {
+            await session.withTransaction(async () => {
+              const loanRequest = await LoanRequest.findByIdAndUpdate(
+                loanRequestId,
+                { status: 'funded' },
+                { session, new: true }
+              );
+
+              if (!loanRequest) {
+                throw new Error(`LoanRequest ${loanRequestId} not found`);
+              }
+
+              const fundedLoan = await FundedLoan.create(
+                [{
+                  loanRequestId: loanRequest._id,
+                  lenderId: lenderId,
+                  borrowerId: borrowerId,
+                  fundedAmount: loanRequest.amount,
+                  outstandingBalance: loanRequest.amount,
+                  stripePaymentIntentId: paymentIntent.id,
+                  status: 'active',
+                }],
+                { session }
+              );
+              const fundedLoanDoc = fundedLoan[0];
+
+              const instalments = generateSchedule(
+                fundedLoanDoc._id,
+                loanRequest.amount,
+                loanRequest.interestRate,
+                loanRequest.tenure,
+                new Date()
+              );
+              await RepaymentSchedule.insertMany(instalments, { session });
+
+              await Transaction.create(
+                [{
+                  fromUserId: lenderId,
+                  toUserId: borrowerId,
+                  amount: loanRequest.amount,
+                  type: 'funding',
+                  stripeId: paymentIntent.id,
+                  loanRequestId: loanRequest._id,
+                  fundedLoanId: fundedLoanDoc._id,
+                }],
+                { session }
+              );
+            });
+          } catch (transactionErr) {
+            console.error('[Stripe Webhook] Funding transaction failed:', transactionErr.message);
+            throw transactionErr;
+          } finally {
+            await session.endSession();
+          }
+          console.log(`[Stripe Webhook] Successfully funded loan ${loanRequestId}`);
         }
 
-        const session = await mongoose.startSession();
+        // ── Repayment payment ─────────────────────────────────────
+        else {
+          const { repaymentScheduleId, fundedLoanId, borrowerId: rb, lenderId: rl, emiAmount } = paymentIntent.metadata;
 
-        try {
-          await session.withTransaction(async () => {
-            // 1. Update LoanRequest status to funded
-            const loanRequest = await LoanRequest.findByIdAndUpdate(
-              loanRequestId,
-              { status: 'funded' },
-              { session, new: true }
-            );
+          if (!repaymentScheduleId) {
+            console.log('[Stripe Webhook] repayment payment without repaymentScheduleId metadata');
+            break;
+          }
 
-            if (!loanRequest) {
-              throw new Error(`LoanRequest ${loanRequestId} not found`);
-            }
+          const repaymentAmount = parseFloat(emiAmount || '0');
+          const PLATFORM_FEE_RATE = 0.02; // 2% platform fee
+          const platformFee = Math.round(repaymentAmount * PLATFORM_FEE_RATE * 100) / 100;
+          const lenderPayout = repaymentAmount - platformFee;
 
-            // 2. Create FundedLoan
-            const fundedLoan = await FundedLoan.create(
-              [{
-                loanRequestId: loanRequest._id,
-                lenderId: lenderId,
-                borrowerId: borrowerId,
-                fundedAmount: loanRequest.amount,
-                outstandingBalance: loanRequest.amount,
-                stripePaymentIntentId: paymentIntent.id,
-                status: 'active',
-              }],
-              { session }
-            );
-            const fundedLoanDoc = fundedLoan[0];
+          const session = await mongoose.startSession();
 
-            // 3. Generate RepaymentSchedule instalments
-            // generateSchedule is already imported at the top
-            const instalments = generateSchedule(
-              fundedLoanDoc._id,
-              loanRequest.amount,
-              loanRequest.interestRate,
-              loanRequest.tenure,
-              new Date()
-            );
-            await RepaymentSchedule.insertMany(instalments, { session });
+          try {
+            await session.withTransaction(async () => {
+              const repayment = await RepaymentSchedule.findById(repaymentScheduleId).session(session);
+              if (!repayment) throw new Error(`RepaymentSchedule ${repaymentScheduleId} not found`);
 
-            // 4. Create Transaction Log
-            await Transaction.create(
-              [{
-                fromUserId: lenderId,
-                toUserId: borrowerId,
-                amount: loanRequest.amount,
-                type: 'funding',
-                stripeId: paymentIntent.id,
-                loanRequestId: loanRequest._id,
-                fundedLoanId: fundedLoanDoc._id,
-              }],
-              { session }
-            );
-          });
-        } catch (transactionErr) {
-          console.error('[Stripe Webhook] Transaction failed:', transactionErr.message);
-          throw transactionErr;
-        } finally {
-          await session.endSession();
+              if (repayment.status === 'paid') {
+                console.log(`[Stripe Webhook] Repayment ${repaymentScheduleId} already paid, skipping`);
+                return;
+              }
+
+              // 1. Mark schedule as paid
+              repayment.status = 'paid';
+              repayment.paidAt = new Date();
+              repayment.stripePaymentIntentId = paymentIntent.id;
+              await repayment.save({ session });
+
+              // 2. Update FundedLoan outstanding balance
+              const fundedLoan = await FundedLoan.findById(fundedLoanId).session(session);
+              if (!fundedLoan) throw new Error(`FundedLoan ${fundedLoanId} not found`);
+
+              fundedLoan.outstandingBalance = Math.max(0, fundedLoan.outstandingBalance - repaymentAmount);
+              fundedLoan.status = 'repaying';
+              await fundedLoan.save({ session });
+
+              // 3. Transfer 98% to lender via Stripe Connect
+              if (lenderPayout > 0) {
+                try {
+                  await stripe.transfers.create({
+                    amount: Math.round(lenderPayout * 100),
+                    currency: 'inr',
+                    destination: rl,
+                    transfer_group: repaymentScheduleId,
+                    metadata: {
+                      type: 'repayment_payout',
+                      repaymentScheduleId,
+                      fundedLoanId,
+                    },
+                  });
+                } catch (transferErr) {
+                  console.error('[Stripe Webhook] Transfer to lender failed:', transferErr.message);
+                  // Continue — we still mark the repayment as paid
+                }
+              }
+
+              // 4. Create repayment transaction (borrower → lender)
+              await Transaction.create(
+                [{
+                  fromUserId: rb,
+                  toUserId: rl,
+                  amount: repaymentAmount,
+                  type: 'repayment',
+                  stripeId: paymentIntent.id,
+                  fundedLoanId: fundedLoan._id,
+                  repaymentScheduleId: repayment._id,
+                }],
+                { session }
+              );
+
+              // 5. Create platform fee transaction (borrower → platform)
+              if (platformFee > 0) {
+                await Transaction.create(
+                  [{
+                    fromUserId: rb,
+                    toUserId: null, // platform fee
+                    amount: platformFee,
+                    type: 'fee',
+                    stripeId: paymentIntent.id,
+                    fundedLoanId: fundedLoan._id,
+                    repaymentScheduleId: repayment._id,
+                  }],
+                  { session }
+                );
+              }
+
+              // ── Day 24: Auto-complete loan ──────────────────────
+              const remainingUnpaid = await RepaymentSchedule.countDocuments({
+                fundedLoanId: fundedLoan._id,
+                status: { $ne: 'paid' },
+              }).session(session);
+
+              if (remainingUnpaid === 0) {
+                fundedLoan.status = 'completed';
+                await fundedLoan.save({ session });
+                console.log(`[Stripe Webhook] Loan ${fundedLoanId} fully repaid and completed`);
+              }
+            });
+          } catch (transactionErr) {
+            console.error('[Stripe Webhook] Repayment transaction failed:', transactionErr.message);
+            throw transactionErr;
+          } finally {
+            await session.endSession();
+          }
+          console.log(`[Stripe Webhook] Successfully processed repayment ${repaymentScheduleId}`);
         }
-        console.log(`[Stripe Webhook] Successfully funded loan ${loanRequestId}`);
         break;
       }
 
