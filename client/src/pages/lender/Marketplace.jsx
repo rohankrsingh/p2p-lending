@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   IndianRupee,
@@ -238,9 +239,25 @@ export default function Marketplace() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loans.map((loan) => (
-            <Card key={loan._id} className="border-slate-800 bg-slate-900/50 hover:bg-slate-900/80 transition-all flex flex-col justify-between shadow-lg">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { transition: { staggerChildren: 0.06 } },
+          }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {loans.map((loan, i) => (
+            <motion.div
+              key={loan._id}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+              }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            >
+              <Card className="border-slate-800 bg-slate-900/50 hover:bg-slate-900/80 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg h-full">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-0.5">
@@ -264,7 +281,7 @@ export default function Marketplace() {
               </CardHeader>
 
               <CardContent className="space-y-3 pb-6 flex-1">
-                <div className="flex items-center justify-between text-xs py-2 px-3 rounded-lg bg-slate-950/60 border border-slate-850 font-mono">
+                <div className="flex items-center justify-between text-xs py-2 px-3 rounded-lg bg-slate-950/60 border border-slate-800 font-mono">
                   <div>
                     <span className="text-[9px] text-slate-500 block uppercase">Tenure</span>
                     <span className="font-semibold text-white">{loan.tenure} Months</span>
@@ -296,8 +313,9 @@ export default function Marketplace() {
                 </Button>
               </CardFooter>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Pagination Controls */}
