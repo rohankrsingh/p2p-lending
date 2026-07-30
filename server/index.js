@@ -12,6 +12,7 @@ import stripeRoutes, { stripeWebhookHandler } from './routes/stripe.js';
 
 // Agenda scheduler
 import agenda from './services/agenda.js';
+import registerJobs from './services/jobs.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,7 @@ app.use((err, _req, res, _next) => {
 // ── Start ─────────────────────────────────────────────────────────
 connectDB().then(async () => {
   await agenda.start();
+  registerJobs(agenda);
   console.log('⏰ Agenda scheduler started');
 
   app.listen(PORT, () => {
