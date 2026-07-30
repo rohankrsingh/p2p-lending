@@ -16,6 +16,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
   Sparkles,
   Info,
 } from 'lucide-react'
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/dialog'
 import { calculateEMI } from '@/lib/emi'
 import api from '@/lib/api'
+import FundLoanDialog from '@/components/stripe/FundLoanDialog'
 
 const TENURE_OPTIONS = [3, 6, 9, 12, 18, 24]
 
@@ -56,7 +58,7 @@ export default function Marketplace() {
   const [selectedLoan, setSelectedLoan] = useState(null)
   const [loanDetails, setLoanDetails] = useState(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
-  const [investLoading, setInvestLoading] = useState(false)
+  const [showFundDialog, setShowFundDialog] = useState(false)
 
   const fetchMarketplace = async () => {
     setLoading(true)
@@ -100,23 +102,16 @@ export default function Marketplace() {
     }
   }
 
-  // Handle funding/investment action
-  const handleFundLoan = async () => {
-    if (!selectedLoan) return
-    setInvestLoading(true)
-    try {
-      const { data } = await api.post(`/loans/${selectedLoan._id}/invest`)
-      toast.success('Loan successfully funded!', {
-        description: `Stripe Transfer ID: ${data.fundedLoan.stripePaymentIntentId.slice(-8).toUpperCase()}`,
-      })
-      setSelectedLoan(null)
-      setLoanDetails(null)
-      fetchMarketplace()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Investment failed to process')
-    } finally {
-      setInvestLoading(false)
-    }
+  // Handle funding — open the Stripe Payment dialog
+  const handleFundLoan = () => {
+    if (selectedLoan) setShowFundDialog(true)
+  }
+
+  // Refresh marketplace after successful funding
+  const handleFundSuccess = () => {
+    setSelectedLoan(null)
+    setLoanDetails(null)
+    fetchMarketplace()
   }
 
   const handleResetFilters = () => {
@@ -432,18 +427,22 @@ export default function Marketplace() {
             </Button>
             <Button
               onClick={handleFundLoan}
-              disabled={investLoading || detailsLoading}
+              disabled={detailsLoading}
               className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold cursor-pointer text-xs h-10 px-4 shadow-lg shadow-emerald-500/10"
             >
-              {investLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deploying Capital...
-                </>
-              ) : (
-                'Confirm & Fund Loan'
-              )}
+              Fund This Loan <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </DialogFooter>
+
+          {/* Fund loan confirmation + Stripe Payment dialog */}
+          {selectedLoan && (
+            <FundLoanDialog
+              loan={selectedLoan}
+              open={showFundDialog}
+              onOpenChange={setShowFundDialog}
+              onSuccess={handleFundSuccess}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

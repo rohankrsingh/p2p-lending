@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   X,
   ArrowRight,
-  Loader2,
   RefreshCw,
   AlertCircle,
   Banknote,
@@ -42,8 +41,8 @@ export default function StripeOnboardingBanner() {
         hasAccount: data.hasAccount,
         stripeVerified: data.stripeVerified,
       })
-      // Sync back to auth store
-      if (data.stripeVerified && !user?.stripeVerified) {
+      // Sync back to auth store regardless
+      if (data.stripeVerified) {
         updateUser({ stripeVerified: true })
       }
     } catch {
@@ -53,6 +52,7 @@ export default function StripeOnboardingBanner() {
 
   useEffect(() => {
     if (isLender) fetchStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLender])
 
   const handleRefresh = async () => {
