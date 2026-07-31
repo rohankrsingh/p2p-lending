@@ -23,6 +23,7 @@ const borrowerNav = [
   { label: 'Apply for Loan', href: '/borrower/create-loan',  icon: FilePlus },
   { label: 'My Loans',       href: '/borrower/my-loans',     icon: FolderOpen },
   { label: 'Repayments',     href: '/borrower/repayments',   icon: CreditCard },
+  { label: 'Bank Setup',     href: '/borrower/onboarding',   icon: ShieldCheck },
 ]
 
 const lenderNav = [

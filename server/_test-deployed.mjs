@@ -1,6 +1,17 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 
+// SAFETY GUARD — this script registers a real user against the DEPLOYED
+// backend (and writes to the production database). It must never run
+// silently. Set ALLOW_DEPLOYED_TEST=true to explicitly opt in.
+if (process.env.ALLOW_DEPLOYED_TEST !== 'true') {
+  console.error(
+    'Refusing to run: _test-deployed.mjs hits the DEPLOYED API and writes to the production DB.\n' +
+    'Set ALLOW_DEPLOYED_TEST=true to run this smoke test deliberately.'
+  );
+  process.exit(1);
+}
+
 const BASE = 'https://p2p-server-six.vercel.app/api';
 const email = `mkt-test-${Date.now()}@example.com`;
 

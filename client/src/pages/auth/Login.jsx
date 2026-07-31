@@ -39,6 +39,11 @@ export default function Login() {
     toast.info(`Loaded demo credentials for ${role}`)
   }
 
+  // Demo accounts are only shown in local development or when explicitly
+  // enabled for a demo deployment (VITE_DEMO_CREDS=true). Never on prod.
+  const showDemoCreds =
+    import.meta.env.DEV || import.meta.env.VITE_DEMO_CREDS === 'true'
+
   return (
     <section className="min-h-screen bg-background p-3 text-foreground antialiased">
       <div className="grid min-h-[calc(100vh-1.5rem)] gap-6 lg:grid-cols-[0.94fr_1.06fr]">
@@ -125,32 +130,34 @@ export default function Login() {
             </form>
 
             {/* Quick Demo Credentials Autofill */}
-            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-foreground/70 font-medium">
-                <span className="flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-primary" /> Demo Test Accounts
-                </span>
-                <span className="text-[10px] text-foreground/40">Click to autofill</span>
+            {showDemoCreds && (
+              <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center justify-between text-xs text-foreground/70 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-primary" /> Demo Test Accounts
+                  </span>
+                  <span className="text-[10px] text-foreground/40">Click to autofill</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleFillDemo('borrower2@test.com', 'Borrower')}
+                    className="rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-muted hover:border-primary/40 cursor-pointer"
+                  >
+                    <p className="font-semibold text-foreground">Borrower</p>
+                    <p className="text-[11px] text-foreground/50 truncate font-mono mt-0.5">borrower2@test.com</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFillDemo('lender_day5@test.com', 'Lender')}
+                    className="rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-muted hover:border-primary/40 cursor-pointer"
+                  >
+                    <p className="font-semibold text-foreground">Lender / Investor</p>
+                    <p className="text-[11px] text-foreground/50 truncate font-mono mt-0.5">lender_day5@test.com</p>
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('borrower2@test.com', 'Borrower')}
-                  className="rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-muted hover:border-primary/40 cursor-pointer"
-                >
-                  <p className="font-semibold text-foreground">Borrower</p>
-                  <p className="text-[11px] text-foreground/50 truncate font-mono mt-0.5">borrower2@test.com</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('lender_day5@test.com', 'Lender')}
-                  className="rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs transition-colors hover:bg-muted hover:border-primary/40 cursor-pointer"
-                >
-                  <p className="font-semibold text-foreground">Lender / Investor</p>
-                  <p className="text-[11px] text-foreground/50 truncate font-mono mt-0.5">lender_day5@test.com</p>
-                </button>
-              </div>
-            </div>
+            )}
 
           </div>
         </div>

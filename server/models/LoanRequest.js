@@ -18,8 +18,8 @@ const loanRequestSchema = new mongoose.Schema(
     tenure: {
       type: Number,
       enum: {
-        values: [3, 6, 9, 12, 24],
-        message: 'Tenure must be 3, 6, 9, 12, or 24 months',
+        values: [3, 6, 9, 12, 18, 24],
+        message: 'Tenure must be 3, 6, 9, 12, 18, or 24 months',
       },
       required: [true, 'Tenure is required'],
     },

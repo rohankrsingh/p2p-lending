@@ -36,7 +36,8 @@ export async function sendLoanFundedEmail({ borrowerEmail, borrowerName, amount,
       html: `
         <h2>Congratulations, ${borrowerName}!</h2>
         <p>Your loan request of <strong>₹${amount.toLocaleString('en-IN')}</strong> has been fully funded by a lender.</p>
-        <p>The amount has been credited to your account. Your repayment schedule of <strong>${tenure} months</strong> starts from next month.</p>
+        <p>The principal amount has been disbursed to your connected bank account via Stripe Connect (payouts usually settle within 1–2 business days).</p>
+        <p>Your repayment schedule of <strong>${tenure || '—'} months</strong> starts from next month.</p>
         <p>You can view your repayment schedule in your <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/borrower/repayments">dashboard</a>.</p>
         <br/>
         <p style="color: #666; font-size: 12px;">P2P Lending Platform · Your micro-loan partner</p>
@@ -100,7 +101,7 @@ export async function sendRepaymentReminderEmail({ borrowerEmail, borrowerName, 
         <h2>Repayment Reminder</h2>
         <p>Hi ${borrowerName},</p>
         <p>Your <strong>instalment #${instalmentNumber}</strong> of <strong>₹${amount.toLocaleString('en-IN')}</strong> is due on <strong>${formattedDate}</strong>.</p>
-        <p>Please ensure sufficient funds are available in your account to avoid any late fees.</p>
+        <p>Please ensure sufficient funds are available on your card to avoid being marked overdue.</p>
         <p>Make a payment early from your <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/borrower/repayments">repayments dashboard</a>.</p>
         <br/>
         <p style="color: #666; font-size: 12px;">P2P Lending Platform · Stay on track</p>
@@ -134,7 +135,7 @@ export async function sendOverdueEmail({ borrowerEmail, borrowerName, amount, du
         <h2>Payment Overdue</h2>
         <p>Hi ${borrowerName},</p>
         <p>Your <strong>instalment #${instalmentNumber}</strong> of <strong>₹${amount.toLocaleString('en-IN')}</strong> was due on <strong>${formattedDate}</strong> and is now <strong>overdue</strong>.</p>
-        <p>Please make the payment immediately to avoid late fees and impact on your credit profile.</p>
+        <p>Please make the payment as soon as possible to bring your account back in good standing.</p>
         <p><a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/borrower/repayments" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Pay Now</a></p>
         <br/>
         <p style="color: #666; font-size: 12px;">P2P Lending Platform · Don't delay</p>

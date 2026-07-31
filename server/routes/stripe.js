@@ -22,18 +22,19 @@ import RepaymentSchedule from '../models/RepaymentSchedule.js';
 import Transaction from '../models/Transaction.js';
 import { generateSchedule } from '../utils/emi.js';
 import { sendLoanFundedEmail, sendRepaymentReceivedEmail } from '../services/resend.js';
-import { protect, requireRole } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────
 // Day 12: Create Stripe Connect Express account
 // POST /api/stripe/create-connect-account
+// Note: available to BOTH lenders (receive payouts) and
+//       borrowers (receive loan disbursements).
 // ─────────────────────────────────────────────────────────
 router.post(
   '/create-connect-account',
   protect,
-  requireRole('lender'),
   async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
@@ -85,7 +86,6 @@ router.post(
 router.post(
   '/onboarding-link',
   protect,
-  requireRole('lender'),
   async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
@@ -99,10 +99,16 @@ router.post(
       const CLIENT_URL =
         process.env.CLIENT_URL || 'http://localhost:5173';
 
+      // Redirect back to the correct onboarding page for the user's role
+      const onboardingPath =
+        user.role === 'borrower'
+          ? '/borrower/onboarding'
+          : '/lender/onboarding';
+
       const accountLink = await stripe.accountLinks.create({
         account: user.stripeAccountId,
-        refresh_url: `${CLIENT_URL}/lender/onboarding?status=refresh`,
-        return_url:  `${CLIENT_URL}/lender/onboarding?status=return`,
+        refresh_url: `${CLIENT_URL}${onboardingPath}?status=refresh`,
+        return_url:  `${CLIENT_URL}${onboardingPath}?status=return`,
         type: 'account_onboarding',
       });
 
@@ -121,7 +127,6 @@ router.post(
 router.get(
   '/onboarding-return',
   protect,
-  requireRole('lender'),
   async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
@@ -159,7 +164,6 @@ router.get(
 router.get(
   '/account-status',
   protect,
-  requireRole('lender'),
   async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
@@ -224,13 +228,17 @@ export const stripeWebhookHandler = async (req, res) => {
     switch (event.type) {
       case 'account.updated': {
         const account = event.data.object;
-        if (account.details_submitted && account.charges_enabled) {
-          await User.findOneAndUpdate(
-            { stripeAccountId: account.id },
-            { stripeVerified: true }
-          );
-          console.log(`[Stripe Webhook] Verified account ${account.id}`);
-        }
+
+        // Verified only when BOTH details submitted AND charges enabled.
+        // If requirements are no longer met, revoke the flag (no one-way lock).
+        const verified = Boolean(account.details_submitted && account.charges_enabled);
+        await User.findOneAndUpdate(
+          { stripeAccountId: account.id },
+          { stripeVerified: verified }
+        );
+        console.log(
+          `[Stripe Webhook] Account ${account.id} verified=${verified}`
+        );
         break;
       }
 
@@ -249,14 +257,35 @@ export const stripeWebhookHandler = async (req, res) => {
 
           try {
             await session.withTransaction(async () => {
-              const loanRequest = await LoanRequest.findByIdAndUpdate(
-                loanRequestId,
+              // Idempotency guard #1: only a loan still in 'pending' can be funded.
+              // If this returns null the loan was already funded (webhook retry) —
+              // verify a FundedLoan exists so we can skip instead of crashing.
+              const loanRequest = await LoanRequest.findOneAndUpdate(
+                { _id: loanRequestId, status: 'pending' },
                 { status: 'funded' },
                 { session, new: true }
               );
 
               if (!loanRequest) {
-                throw new Error(`LoanRequest ${loanRequestId} not found`);
+                const alreadyFunded = await FundedLoan.findOne({ loanRequestId }).session(session);
+                if (alreadyFunded) {
+                  console.log(`[Stripe Webhook] Loan ${loanRequestId} already funded, skipping (retry).`);
+                  return; // committed no-op — prevents double-funding on webhook retry
+                }
+                throw new Error(`LoanRequest ${loanRequestId} not found or not pending`);
+              }
+
+              // Guard #2: amount charged must match the loan amount exactly
+              const chargedAmount = Math.round(paymentIntent.amount || 0) / 100;
+              if (chargedAmount !== loanRequest.amount) {
+                throw new Error(
+                  `Funding amount mismatch: charged ₹${chargedAmount}, loan ₹${loanRequest.amount}`
+                );
+              }
+
+              // Guard #3: borrower must never fund their own loan
+              if (loanRequest.userId.toString() === lenderId) {
+                throw new Error('Self-funding is not allowed');
               }
 
               const fundedLoan = await FundedLoan.create(
@@ -282,6 +311,31 @@ export const stripeWebhookHandler = async (req, res) => {
               );
               await RepaymentSchedule.insertMany(instalments, { session });
 
+              // Guard #4: borrower must have a Connect account to receive the
+              // disbursement. Funding is gated at /loans/:id/fund, this is
+              // defence-in-depth so the ledger never books an unreal transfer.
+              const borrowerUser = await User.findById(borrowerId).session(session);
+              if (!borrowerUser?.stripeAccountId) {
+                throw new Error(`Borrower ${borrowerId} has no Stripe Connect account for disbursement`);
+              }
+
+              // Disbursement: real transfer of the principal to the borrower's
+              // Connect account (platform acts as escrow between lender & borrower).
+              const disbursalTransfer = await stripe.transfers.create(
+                {
+                  amount: Math.round(loanRequest.amount * 100),
+                  currency: 'inr',
+                  destination: borrowerUser.stripeAccountId,
+                  transfer_group: fundedLoanDoc._id.toString(),
+                  metadata: {
+                    type: 'loan_disbursal',
+                    loanRequestId: loanRequest._id.toString(),
+                    fundedLoanId: fundedLoanDoc._id.toString(),
+                  },
+                },
+                { idempotencyKey: `disbursal-${paymentIntent.id}` }
+              );
+
               await Transaction.create(
                 [{
                   fromUserId: lenderId,
@@ -289,6 +343,20 @@ export const stripeWebhookHandler = async (req, res) => {
                   amount: loanRequest.amount,
                   type: 'funding',
                   stripeId: paymentIntent.id,
+                  loanRequestId: loanRequest._id,
+                  fundedLoanId: fundedLoanDoc._id,
+                }],
+                { session }
+              );
+
+              // Platform → borrower payout (the actual disbursement)
+              await Transaction.create(
+                [{
+                  fromUserId: null, // platform escrow
+                  toUserId: borrowerId,
+                  amount: loanRequest.amount,
+                  type: 'payout',
+                  stripeId: disbursalTransfer.id,
                   loanRequestId: loanRequest._id,
                   fundedLoanId: fundedLoanDoc._id,
                 }],
@@ -304,17 +372,17 @@ export const stripeWebhookHandler = async (req, res) => {
           console.log(`[Stripe Webhook] Successfully funded loan ${loanRequestId}`);
 
           // Send loan-funded email to borrower (fire and forget)
-          // TODO: Re-enable when email service is configured
-          // User.findById(borrowerId).then((user) => {
-          //   if (user) {
-          //     sendLoanFundedEmail({
-          //       borrowerEmail: user.email,
-          //       borrowerName: user.name,
-          //       amount: parseFloat(paymentIntent.amount) / 100,
-          //       tenure: loanRequest.tenure,
-          //     });
-          //   }
-          // }).catch(() => {});
+          User.findById(borrowerId).then(async (user) => {
+            if (user) {
+              const loanReq = await LoanRequest.findById(loanRequestId).catch(() => null);
+              sendLoanFundedEmail({
+                borrowerEmail: user.email,
+                borrowerName: user.name,
+                amount: Math.round(paymentIntent.amount || 0) / 100,
+                tenure: loanReq?.tenure,
+              });
+            }
+          }).catch(() => {});
         }
 
         // ── Repayment payment ─────────────────────────────────────
@@ -328,7 +396,6 @@ export const stripeWebhookHandler = async (req, res) => {
 
           const repaymentAmount = parseFloat(emiAmount || '0');
           const PLATFORM_FEE_RATE = 0.02; // 2% platform fee
-const PLATFORM_FEE_PERCENT = 2; // For display purposes
           const platformFee = Math.round(repaymentAmount * PLATFORM_FEE_RATE * 100) / 100;
           const lenderPayout = repaymentAmount - platformFee;
 
@@ -350,40 +417,61 @@ const PLATFORM_FEE_PERCENT = 2; // For display purposes
               repayment.stripePaymentIntentId = paymentIntent.id;
               await repayment.save({ session });
 
-              // 2. Update FundedLoan outstanding balance
+              // 2. Update FundedLoan outstanding balance using the PRINCIPAL
+              //    component of this instalment (not the full EMI, which
+              //    includes interest and would understate the balance).
               const fundedLoan = await FundedLoan.findById(fundedLoanId).session(session);
               if (!fundedLoan) throw new Error(`FundedLoan ${fundedLoanId} not found`);
 
-              fundedLoan.outstandingBalance = Math.max(0, fundedLoan.outstandingBalance - repaymentAmount);
-              fundedLoan.status = 'repaying';
+              const principalPaid =
+                typeof repayment.principalComponent === 'number' && repayment.principalComponent > 0
+                  ? repayment.principalComponent
+                  : repaymentAmount; // legacy schedules without split: fall back to old behaviour
+              fundedLoan.outstandingBalance = Math.max(
+                0,
+                Math.round((fundedLoan.outstandingBalance - principalPaid) * 100) / 100
+              );
+
+              // Recovery: a payment after default flips the loan back to
+              // 'repaying'. defaultedAt is kept as history of the event.
+              if (fundedLoan.status !== 'completed') {
+                fundedLoan.status = 'repaying';
+                fundedLoan.missedPayments = Math.max(0, (fundedLoan.missedPayments || 0) - 1);
+              }
               await fundedLoan.save({ session });
 
-              // 3. Transfer 98% to lender via Stripe Connect
+              // 3. Transfer lender payout (98% of EMI) to the lender's
+              //    STRIPE CONNECT ACCOUNT (never a Mongo id!). Idempotency key
+              //    makes retries after a crash safe.
               if (lenderPayout > 0) {
-                try {
-                  await stripe.transfers.create({
+                const lenderUser = await User.findById(rl).session(session);
+                if (!lenderUser?.stripeAccountId) {
+                  throw new Error(`Lender ${rl} has no Stripe Connect account — cannot pay out`);
+                }
+
+                await stripe.transfers.create(
+                  {
                     amount: Math.round(lenderPayout * 100),
                     currency: 'inr',
-                    destination: rl,
+                    destination: lenderUser.stripeAccountId,
                     transfer_group: repaymentScheduleId,
                     metadata: {
                       type: 'repayment_payout',
                       repaymentScheduleId,
                       fundedLoanId,
                     },
-                  });
-                } catch (transferErr) {
-                  console.error('[Stripe Webhook] Transfer to lender failed:', transferErr.message);
-                  // Continue — we still mark the repayment as paid
-                }
+                  },
+                  { idempotencyKey: `repayment-payout-${repaymentScheduleId}-${paymentIntent.id}` }
+                );
               }
 
-              // 4. Create repayment transaction (borrower → lender)
+              // 4. Create repayment transaction (borrower → lender, NET of fee)
+              //    so the ledger books exactly 100%: 98% to lender + 2% platform fee.
               await Transaction.create(
                 [{
                   fromUserId: rb,
                   toUserId: rl,
-                  amount: repaymentAmount,
+                  amount: lenderPayout,
                   type: 'repayment',
                   stripeId: paymentIntent.id,
                   fundedLoanId: fundedLoan._id,
@@ -408,7 +496,7 @@ const PLATFORM_FEE_PERCENT = 2; // For display purposes
                 );
               }
 
-              // ── Day 24: Auto-complete loan ──────────────────────
+              // ── Auto-complete loan when every instalment is paid ──
               const remainingUnpaid = await RepaymentSchedule.countDocuments({
                 fundedLoanId: fundedLoan._id,
                 status: { $ne: 'paid' },
@@ -417,7 +505,21 @@ const PLATFORM_FEE_PERCENT = 2; // For display purposes
               if (remainingUnpaid === 0) {
                 fundedLoan.status = 'completed';
                 await fundedLoan.save({ session });
+
+                // Keep LoanRequest in sync with FundedLoan (M5)
+                await LoanRequest.findByIdAndUpdate(
+                  fundedLoan.loanRequestId,
+                  { status: 'completed' },
+                  { session }
+                );
                 console.log(`[Stripe Webhook] Loan ${fundedLoanId} fully repaid and completed`);
+              } else if (fundedLoan.status !== 'completed') {
+                // Keep LoanRequest in sync during the repayment phase
+                await LoanRequest.findByIdAndUpdate(
+                  fundedLoan.loanRequestId,
+                  { status: 'repaying' },
+                  { session }
+                );
               }
             });
           } catch (transactionErr) {
@@ -429,18 +531,17 @@ const PLATFORM_FEE_PERCENT = 2; // For display purposes
           console.log(`[Stripe Webhook] Successfully processed repayment ${repaymentScheduleId}`);
 
           // Send repayment-received email to lender (fire and forget)
-          // TODO: Re-enable when email service is configured
-          // const lenderUser = await User.findById(rl);
-          // const borrowerUser = await User.findById(rb);
-          // if (lenderUser) {
-          //   sendRepaymentReceivedEmail({
-          //     lenderEmail: lenderUser.email,
-          //     lenderName: lenderUser.name,
-          //     amount: repaymentAmount,
-          //     borrowerName: borrowerUser?.name || 'Borrower',
-          //     instalmentNumber: parseInt(paymentIntent.metadata.instalmentNumber || '0'),
-          //   });
-          // }
+          const lenderUser = await User.findById(rl);
+          const borrowerUser = await User.findById(rb);
+          if (lenderUser) {
+            sendRepaymentReceivedEmail({
+              lenderEmail: lenderUser.email,
+              lenderName: lenderUser.name,
+              amount: lenderPayout,
+              borrowerName: borrowerUser?.name || 'Borrower',
+              instalmentNumber: parseInt(paymentIntent.metadata.instalmentNumber || '0'),
+            });
+          }
         }
         break;
       }

@@ -58,21 +58,43 @@ router.post('/:scheduleId/pay', protect, requireRole('borrower'), async (req, re
       return res.status(403).json({ message: 'Access denied: not your loan' });
     }
 
-    // Create a Stripe PaymentIntent for this EMI
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(repayment.emiAmount * 100),
-      currency: 'inr',
-      payment_method_types: ['card'],
-      metadata: {
-        type: 'repayment',
-        repaymentScheduleId: repayment._id.toString(),
-        fundedLoanId: fundedLoan._id.toString(),
-        borrowerId: req.user.id,
-        lenderId: fundedLoan.lenderId.toString(),
-        instalmentNumber: String(repayment.instalmentNumber),
-        emiAmount: String(repayment.emiAmount),
+    // Enforce sequential repayment: the borrower may only pay the next
+    // unpaid instalment (lowest instalment number). Paying #6 before #1
+    // would corrupt the amortisation schedule.
+    const nextUnpaid = await RepaymentSchedule.findOne({
+      fundedLoanId: fundedLoan._id,
+      status: { $ne: 'paid' },
+    }).sort({ instalmentNumber: 1 });
+
+    if (!nextUnpaid) {
+      return res.status(400).json({ message: 'All instalments for this loan are already paid' });
+    }
+
+    if (nextUnpaid._id.toString() !== repayment._id.toString()) {
+      return res.status(400).json({
+        message: `Instalment #${nextUnpaid.instalmentNumber} is due first. Please pay instalments in order.`,
+      });
+    }
+
+    // Create a Stripe PaymentIntent for this EMI.
+    // Idempotency key: retries of this request can't double-create intents.
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: Math.round(repayment.emiAmount * 100),
+        currency: 'inr',
+        payment_method_types: ['card'],
+        metadata: {
+          type: 'repayment',
+          repaymentScheduleId: repayment._id.toString(),
+          fundedLoanId: fundedLoan._id.toString(),
+          borrowerId: req.user.id,
+          lenderId: fundedLoan.lenderId.toString(),
+          instalmentNumber: String(repayment.instalmentNumber),
+          emiAmount: String(repayment.emiAmount),
+        },
       },
-    });
+      { idempotencyKey: `repay-${repayment._id}-${req.user.id}` }
+    );
 
     res.json({
       clientSecret: paymentIntent.client_secret,

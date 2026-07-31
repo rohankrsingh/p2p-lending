@@ -62,7 +62,7 @@ export default function Payouts() {
     (acc, inv) => {
       acc.totalLent += inv.fundedAmount
       acc.totalOutstanding += inv.outstandingBalance
-      acc.totalCollected += (inv.fundedAmount - inv.outstandingBalance)
+      acc.totalCollected += Math.max(0, inv.fundedAmount - inv.outstandingBalance)
       return acc
     },
     { totalLent: 0, totalOutstanding: 0, totalCollected: 0 }
@@ -216,11 +216,37 @@ export default function Payouts() {
           ) : (
             <div className="divide-y divide-border">
               {investments.map((inv) => {
-                const collected = inv.fundedAmount - inv.outstandingBalance
+                const collected = Math.max(0, inv.fundedAmount - inv.outstandingBalance)
                 const progressPct = inv.fundedAmount > 0
-                  ? Math.round((collected / inv.fundedAmount) * 100)
+                  ? Math.min(100, Math.round((collected / inv.fundedAmount) * 100))
                   : 0
-                const isCompleted = inv.status === 'completed'
+
+                let statusBadge = null
+                switch (inv.status) {
+                  case 'completed':
+                    statusBadge = (
+                      <Badge className="bg-primary/10 text-primary border-primary/30 text-[10px] font-mono">
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> COMPLETED
+                      </Badge>
+                    )
+                    break
+                  case 'defaulted':
+                    statusBadge = (
+                      <Badge className="bg-destructive/10 text-destructive border-destructive/30 text-[10px] font-mono">
+                        <AlertCircle className="w-3 h-3 mr-1" /> DEFAULTED
+                      </Badge>
+                    )
+                    break
+                  case 'active':
+                  case 'repaying':
+                  default:
+                    statusBadge = (
+                      <Badge className="bg-warning/10 text-warning border-warning/30 text-[10px] font-mono">
+                        <Clock className="w-3 h-3 mr-1" /> REPAYING
+                      </Badge>
+                    )
+                    break
+                }
 
                 return (
                   <div key={inv._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/20 transition-colors">
@@ -229,15 +255,7 @@ export default function Payouts() {
                         <span className="text-xs font-bold text-foreground font-mono">
                           ₹{inv.fundedAmount.toLocaleString('en-IN')}
                         </span>
-                        {isCompleted ? (
-                          <Badge className="bg-primary/10 text-primary border-primary/30 text-[10px] font-mono">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> COMPLETED
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-warning/10 text-warning border-warning/30 text-[10px] font-mono">
-                            <Clock className="w-3 h-3 mr-1" /> REPAYING
-                          </Badge>
-                        )}
+                        {statusBadge}
                       </div>
                       <p className="text-[10px] text-muted-foreground/70 font-mono">
                         Ref: {inv._id.slice(-8).toUpperCase()} · Borrower: {inv.loanRequestId?.userId?.name || 'N/A'}

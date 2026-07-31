@@ -29,8 +29,8 @@ export default function StripeOnboardingBanner() {
   const [status, setStatus] = useState({ loading: true, hasAccount: false, stripeVerified: false })
   const [refreshing, setRefreshing] = useState(false)
 
-  // Don't show for non-lenders or already verified
-  const isLender = user?.role === 'lender'
+  // Show for any authenticated user who needs a Stripe Connect account
+  const isBorrower = user?.role === 'borrower'
 
   const fetchStatus = async (silent = false) => {
     if (!silent) setStatus((s) => ({ ...s, loading: true }))
@@ -51,9 +51,9 @@ export default function StripeOnboardingBanner() {
   }
 
   useEffect(() => {
-    if (isLender) fetchStatus()
+    if (user) fetchStatus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLender])
+  }, [user?.role])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -62,10 +62,15 @@ export default function StripeOnboardingBanner() {
   }
 
   // Conditions to hide the banner
-  if (!isLender) return null
+  if (!user) return null
   if (status.loading) return null
   if (status.stripeVerified) return null
   if (dismissed) return null
+
+  const onboardingPath = isBorrower ? '/borrower/onboarding' : '/lender/onboarding'
+  const actionLabel = isBorrower
+    ? (status.hasAccount ? 'Complete Verification' : 'Start Bank Setup')
+    : (status.hasAccount ? 'Complete Verification' : 'Start Onboarding')
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/15 via-muted to-primary/15 shadow-pop mb-6">
@@ -88,7 +93,9 @@ export default function StripeOnboardingBanner() {
             <span className="text-sm font-semibold text-foreground">
               {status.hasAccount
                 ? 'Stripe verification incomplete'
-                : 'Set up payouts to start earning'}
+                : isBorrower
+                  ? 'Connect your bank account to receive loan funds'
+                  : 'Set up payouts to start earning'}
             </span>
             <Badge
               variant="outline"
@@ -100,15 +107,19 @@ export default function StripeOnboardingBanner() {
 
           <p className="text-xs text-muted-foreground mt-1 max-w-lg leading-relaxed">
             {status.hasAccount
-              ? 'Your Stripe Connect account is pending additional verification. Submit your details to receive borrower repayments and fund loans.'
-              : 'Connect a bank account via Stripe to fund loan requests and receive monthly EMI payouts directly to your account.'}
+              ? 'Your Stripe Connect account is pending additional verification. Submit your details to complete the setup.'
+              : isBorrower
+                ? 'Link a bank account via Stripe so the loan principal is transferred to you the moment your application is funded.'
+                : 'Connect a bank account via Stripe to fund loan requests and receive monthly EMI payouts directly to your account.'}
           </p>
 
           {/* Quick stats row */}
           <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground/70">
-            <span className="flex items-center gap-1">
-              <Banknote className="w-3 h-3 text-foreground" /> 2% platform fee
-            </span>
+            {!isBorrower && (
+              <span className="flex items-center gap-1">
+                <Banknote className="w-3 h-3 text-foreground" /> 2% platform fee
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <ExternalLink className="w-3 h-3 text-foreground" /> Secure Stripe hosted UI
             </span>
@@ -118,10 +129,10 @@ export default function StripeOnboardingBanner() {
           <div className="flex items-center gap-2 mt-3">
             <Button
               size="sm"
-              onClick={() => navigate('/lender/onboarding')}
+              onClick={() => navigate(onboardingPath)}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8 px-4 shadow-cta cursor-pointer"
             >
-              {status.hasAccount ? 'Complete Verification' : 'Start Onboarding'}
+              {actionLabel}
               <ArrowRight className="w-3 h-3 ml-1.5" />
             </Button>
 

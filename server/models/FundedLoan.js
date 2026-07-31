@@ -42,6 +42,20 @@ const fundedLoanSchema = new mongoose.Schema(
       default: 'active',
     },
 
+    // ── Default tracking (grace + recovery history) ────────────
+    // Number of instalments currently overdue for this loan. A loan is
+    // only marked 'defaulted' once this reaches the default threshold.
+    missedPayments: {
+      type: Number,
+      default: 0,
+    },
+    // When the loan became defaulted. Deliberately NOT cleared when a
+    // borrower recovers — it remains as history of the default event.
+    defaultedAt: {
+      type: Date,
+      default: null,
+    },
+
     fundedAt: {
       type: Date,
       default: Date.now,

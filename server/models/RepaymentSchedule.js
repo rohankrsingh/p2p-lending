@@ -25,10 +25,32 @@ const repaymentScheduleSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Principal vs interest split for this instalment (reducing-balance).
+    // The final instalment absorbs rounding drift so principal amortises to 0.
+    principalComponent: {
+      type: Number,
+      default: 0,
+    },
+    interestComponent: {
+      type: Number,
+      default: 0,
+    },
+
     status: {
       type: String,
       enum: ['pending', 'paid', 'overdue'],
       default: 'pending',
+    },
+
+    // When this instalment transitioned to 'overdue' (set by the daily job)
+    overdueAt: {
+      type: Date,
+      default: null,
+    },
+    // When the 3-day reminder email was last sent (dedupes reminders)
+    remindedAt: {
+      type: Date,
+      default: null,
     },
 
     // Filled when status → 'paid'

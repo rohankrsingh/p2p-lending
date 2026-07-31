@@ -4,6 +4,7 @@ import LoanRequest from '../models/LoanRequest.js';
 import FundedLoan from '../models/FundedLoan.js';
 import RepaymentSchedule from '../models/RepaymentSchedule.js';
 import Transaction from '../models/Transaction.js';
+import User from '../models/User.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { calculateEMI, generateSchedule } from '../utils/emi.js';
 
@@ -147,7 +148,7 @@ router.get('/my', protect, requireRole('borrower'), async (req, res) => {
       emi: calculateEMI(loan.amount, loan.interestRate, loan.tenure),
     }));
 
-    res.json(loansWithEmi);
+    res.json({ loans: loansWithEmi });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -261,29 +262,41 @@ router.get('/lender/dashboard', protect, requireRole('lender'), async (req, res)
     let totalInvested = 0;
     let activeInvestments = 0;
     let expectedMonthlyPayout = 0;
-    let totalInterestEarned = 0; // calculated from paid repayments
+    let totalInterestEarned = 0; // interest-only, from paid instalments
 
     fundedLoans.forEach((loan) => {
       totalInvested += loan.fundedAmount;
       if (loan.status === 'active' || loan.status === 'repaying') {
         activeInvestments++;
-        // Expected monthly payout is the EMI of the loan
+        // Expected monthly payout uses the actual first instalment's EMI
+        // (falls back to a fresh calculation for legacy data without schedules)
         const emi = calculateEMI(loan.fundedAmount, loan.loanRequestId?.interestRate || 12, loan.loanRequestId?.tenure || 6);
         expectedMonthlyPayout += emi;
       }
     });
 
-    // Calculate total interest earned by fetching all completed repayments transactions
-    const repaymentTransactions = await Transaction.find({
-      toUserId: lenderId,
-      type: 'repayment',
-    }).populate('repaymentScheduleId');
-
-    repaymentTransactions.forEach((tx) => {
-      // EMI = principal + interest. For mock simplicity, we can assume interest is a fraction, 
-      // or just track full settled transaction amounts as returns
-      totalInterestEarned += tx.amount;
+    // Interest earned = sum of the INTEREST components of paid instalments
+    // (the repayment transaction amount is NET of the 2% platform fee, so it
+    // must never be used as "interest earned").
+    const fundedLoanIds = fundedLoans.map((fl) => fl._id);
+    const paidSchedules = await RepaymentSchedule.find({
+      fundedLoanId: { $in: fundedLoanIds },
+      status: 'paid',
     });
+    paidSchedules.forEach((s) => {
+      if (typeof s.interestComponent === 'number' && s.interestComponent > 0) {
+        totalInterestEarned += s.interestComponent;
+      } else {
+        // Legacy schedules: interest ≈ EMI − principal portion estimated from
+        // reducing balance at the funded loan's rate (best-effort fallback).
+        const fl = fundedLoans.find((f) => f._id.toString() === s.fundedLoanId.toString());
+        const rate = fl?.loanRequestId?.interestRate || 12;
+        const monthlyRate = rate / 100 / 12;
+        const estInterest = Math.round(s.emiAmount * (monthlyRate / (1 + monthlyRate)) * 100) / 100;
+        totalInterestEarned += estInterest;
+      }
+    });
+    totalInterestEarned = Math.round(totalInterestEarned * 100) / 100;
 
     res.json({
       stats: {
@@ -344,18 +357,34 @@ router.post('/:id/fund', protect, requireRole('lender'), async (req, res) => {
       return res.status(400).json({ message: 'You cannot fund your own loan request' });
     }
 
+    if (!Number.isInteger(loan.amount)) {
+      return res.status(400).json({ message: 'Loan amount must be a whole number (₹)' });
+    }
+
+    // The borrower must have a verified Stripe Connect account so the
+    // disbursement can actually be transferred to them after funding.
+    const borrower = await User.findById(loan.userId);
+    if (!borrower?.stripeAccountId) {
+      return res.status(400).json({
+        message: 'This borrower has not completed Stripe Connect onboarding yet. Funding is paused until they add their bank account.',
+      });
+    }
+
     // Create a Stripe PaymentIntent
-    // amount is in cents (INR)
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: loan.amount * 100,
-      currency: 'inr',
-      payment_method_types: ['card'],
-      metadata: {
-        loanRequestId: loan._id.toString(),
-        lenderId: req.user.id,
-        borrowerId: loan.userId.toString(),
+    // amount is in paise (INR)
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: loan.amount * 100,
+        currency: 'inr',
+        payment_method_types: ['card'],
+        metadata: {
+          loanRequestId: loan._id.toString(),
+          lenderId: req.user.id,
+          borrowerId: loan.userId.toString(),
+        },
       },
-    });
+      { idempotencyKey: `fund-loan-${loan._id}-${req.user.id}` }
+    );
 
     res.status(201).json({
       clientSecret: paymentIntent.client_secret,
@@ -432,6 +461,27 @@ router.get('/:id', protect, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
+    // Lenders may preview PENDING loans (marketplace), but a funded loan is
+    // only visible to the lender who actually funded it — this prevents
+    // enumerating borrower PII (email) for loans you don't own.
+    if (req.user.role === 'lender' && loan.status !== 'pending') {
+      const fundedLoan = await FundedLoan.findOne({
+        loanRequestId: loan._id,
+        lenderId: req.user.id,
+      });
+      if (!fundedLoan) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+    }
+
+    // Lenders never need the borrower's email before funding; expose name only.
+    const loanObject = loan.toObject();
+    if (req.user.role === 'lender' && loan.status === 'pending') {
+      if (loanObject.userId) {
+        loanObject.userId = { name: loanObject.userId.name };
+      }
+    }
+
     const emi = calculateEMI(loan.amount, loan.interestRate, loan.tenure);
 
     // Generate a preview schedule (not persisted — just for display)
@@ -448,7 +498,7 @@ router.get('/:id', protect, async (req, res) => {
       emiAmount: item.emiAmount,
     }));
 
-    res.json({ ...loan.toObject(), emi, schedulePreview });
+    res.json({ ...loanObject, emi, schedulePreview });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -9,6 +9,7 @@ import BorrowerDashboard from '@/pages/borrower/Dashboard'
 import BorrowerCreateLoan from '@/pages/borrower/CreateLoan'
 import BorrowerMyLoans from '@/pages/borrower/MyLoans'
 import BorrowerRepayments from '@/pages/borrower/Repayments'
+import BorrowerOnboarding from '@/pages/borrower/Onboarding'
 
 // Lender pages
 import LenderDashboard from '@/pages/lender/Dashboard'
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/borrower/create-loan" element={<BorrowerCreateLoan />} />
         <Route path="/borrower/my-loans"    element={<BorrowerMyLoans />} />
         <Route path="/borrower/repayments"  element={<BorrowerRepayments />} />
+        <Route path="/borrower/onboarding"  element={<BorrowerOnboarding />} />
       </Route>
 
       {/* Lender routes — wrapped in RoleGuard → AppShell */}

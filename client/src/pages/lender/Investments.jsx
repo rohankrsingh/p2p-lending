@@ -110,6 +110,12 @@ export default function Investments() {
             <CheckCircle2 className="w-3 h-3 mr-1" /> COMPLETED
           </Badge>
         )
+      case 'defaulted':
+        return (
+          <Badge className="bg-destructive/10 text-destructive border-destructive/30 font-medium font-mono text-[10px]">
+            <AlertTriangle className="w-3 h-3 mr-1" /> DEFAULTED
+          </Badge>
+        )
       case 'active':
       case 'repaying':
       default:

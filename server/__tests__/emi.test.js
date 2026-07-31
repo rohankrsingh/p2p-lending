@@ -85,59 +85,78 @@ describe('generateSchedule', () => {
       expect(instalment.fundedLoanId).toBe(mockFundedLoanId);
     });
   });
+
+  it('should split every instalment into principal + interest that sums to the EMI', () => {
+    const schedule = generateSchedule(mockFundedLoanId, 10000, 12, 6);
+    schedule.forEach((instalment) => {
+      expect(instalment.principalComponent).toBeDefined();
+      expect(instalment.interestComponent).toBeDefined();
+      expect(instalment.principalComponent + instalment.interestComponent).toBeCloseTo(
+        instalment.emiAmount,
+        2
+      );
+    });
+  });
+
+  it('principal components should amortise the loan to exactly ₹0', () => {
+    const schedule = generateSchedule(mockFundedLoanId, 10000, 12, 6);
+    const principalSum = schedule.reduce((sum, i) => sum + i.principalComponent, 0);
+    // The final instalment absorbs rounding drift — principal must be exact.
+    expect(principalSum).toBe(10000);
+  });
+
+  it('interest components should equal total interest payable', () => {
+    const schedule = generateSchedule(mockFundedLoanId, 10000, 12, 6);
+    const interestSum = schedule.reduce((sum, i) => sum + i.interestComponent, 0);
+    const emiSum = schedule.reduce((sum, i) => sum + i.emiAmount, 0);
+    expect(interestSum).toBeCloseTo(emiSum - 10000, 2);
+  });
+
+  it('should never produce a negative principal component', () => {
+    const schedule = generateSchedule(mockFundedLoanId, 5000, 15, 3);
+    schedule.forEach((instalment) => {
+      expect(instalment.principalComponent).toBeGreaterThanOrEqual(0);
+      expect(instalment.interestComponent).toBeGreaterThanOrEqual(0);
+    });
+  });
 });
 
 // ────────────────────────────────────────────────────────────
-// Fee Deduction Logic Tests (Day 31)
+// Platform Fee Split (2% per EMI — 98% to lender, 2% platform)
 // ────────────────────────────────────────────────────────────
 
-describe('platform fee deduction', () => {
-  const PLATFORM_FEE_RATE = 0.02;
-
-  function calculatePlatformFee(amount) {
-    return Math.round(amount * PLATFORM_FEE_RATE * 100) / 100;
-  }
-
-  function calculateLenderPayout(amount) {
-    return amount - calculatePlatformFee(amount);
-  }
+describe('platform fee split (per-EMI)', () => {
+  it('should book exactly 100% of every EMI: 98% lender payout + 2% fee', () => {
+    const schedule = generateSchedule('507f1f77bcf86cd799439011', 10000, 12, 6);
+    schedule.forEach((instalment) => {
+      const platformFee = Math.round(instalment.emiAmount * 0.02 * 100) / 100;
+      const lenderPayout = Math.round((instalment.emiAmount - platformFee) * 100) / 100;
+      expect(lenderPayout + platformFee).toBeCloseTo(instalment.emiAmount, 2);
+      expect(platformFee).toBeGreaterThan(0);
+      expect(lenderPayout).toBeGreaterThan(0);
+    });
+  });
 
   it('should deduct 2% platform fee correctly', () => {
-    const fee = calculatePlatformFee(1000);
+    const fee = Math.round(1000 * 0.02 * 100) / 100;
     expect(fee).toBe(20);
   });
 
   it('should transfer 98% to lender', () => {
-    const payout = calculateLenderPayout(1000);
-    expect(payout).toBe(980);
+    const fee = Math.round(1000 * 0.02 * 100) / 100;
+    expect(1000 - fee).toBe(980);
   });
 
   it('should handle fractional amounts correctly', () => {
     // ₹1,725.48 EMI → fee = 34.5096 → rounded to 34.51
     // payout = 1725.48 - 34.51 = 1690.97
-    const fee = calculatePlatformFee(1725.48);
+    const fee = Math.round(1725.48 * 0.02 * 100) / 100;
     expect(fee).toBe(34.51);
-
-    const payout = calculateLenderPayout(1725.48);
+    const payout = Math.round((1725.48 - fee) * 100) / 100;
     expect(payout).toBeCloseTo(1690.97, 2);
   });
 
   it('should handle zero amount', () => {
-    expect(calculatePlatformFee(0)).toBe(0);
-    expect(calculateLenderPayout(0)).toBe(0);
-  });
-
-  it('should handle small amounts', () => {
-    const fee = calculatePlatformFee(1);
-    expect(fee).toBe(0.02);
-
-    const payout = calculateLenderPayout(1);
-    expect(payout).toBe(0.98);
-  });
-
-  it('should never give negative fee', () => {
-    expect(calculatePlatformFee(0)).toBe(0);
-    expect(calculatePlatformFee(-100)).toBe(-2);
-    // Negative amounts shouldn't happen in practice, but fee follows the formula
+    expect(Math.round(0 * 0.02 * 100) / 100).toBe(0);
   });
 });

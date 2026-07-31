@@ -430,7 +430,7 @@ export default function Marketplace() {
                 <div className="text-[10px] text-muted-foreground/70 leading-normal flex items-start gap-2 pt-1">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <span>
-                    By funding this loan request, ₹{loanDetails.amount.toLocaleString('en-IN')} will be transferred to the borrower's wallet. Monthly EMIs will be deposited into your wallet starting next month.
+                    On funding, the full principal of ₹{loanDetails.amount.toLocaleString('en-IN')} is disbursed to the borrower's connected bank account via Stripe Connect. As the borrower repays, 98% of each EMI is transferred to your connected bank account — the remaining 2% is the platform fee.
                   </span>
                 </div>
               </div>

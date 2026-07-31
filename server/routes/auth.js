@@ -28,7 +28,16 @@ router.post('/register', async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+    // Never leak internal error details to the client
+    console.error('[Auth] register error:', err.message);
+    res.status(500).json({ message: 'Registration failed. Please try again.' });
   }
 });
 
@@ -55,7 +64,8 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[Auth] login error:', err.message);
+    res.status(500).json({ message: 'Login failed. Please try again.' });
   }
 });
 
@@ -63,6 +73,9 @@ router.post('/login', async (req, res) => {
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ message: 'Account no longer exists' });
+    }
     res.json({
       id: user._id,
       name: user.name,
@@ -71,7 +84,8 @@ router.get('/me', protect, async (req, res) => {
       stripeVerified: user.stripeVerified,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[Auth] /me error:', err.message);
+    res.status(500).json({ message: 'Could not load profile' });
   }
 });
 

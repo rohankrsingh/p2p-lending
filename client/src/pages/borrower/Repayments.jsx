@@ -14,7 +14,10 @@ import {
   TrendingDown,
   Info,
   DollarSign,
+  AlertCircle,
 } from 'lucide-react'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { stripePromise } from '@/lib/stripe'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,15 +31,114 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import api from '@/lib/api'
+import { useAuthStore } from '@/store/useAuthStore'
+
+// ── Inner Stripe form (lives inside <Elements>) ──────────────────
+function PaymentForm({ instalment, clientSecret, onSuccess }) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const user = useAuthStore((s) => s.user)
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!stripe || !elements) return
+
+    setSubmitting(true)
+    setErrorMessage('')
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
+        payment_method_data: {
+          billing_details: {
+            name: user?.name || 'Borrower',
+            ...(user?.email ? { email: user.email } : {}),
+          },
+        },
+      },
+      redirect: 'if_required',
+    })
+
+    if (error) {
+      setErrorMessage(error.message || 'Payment failed. Please try again.')
+      setSubmitting(false)
+      return
+    }
+
+    // Payment succeeded — the webhook marks this instalment as paid
+    toast.success('Instalment paid successfully!', {
+      description: `Instalment #${instalment.instalmentNumber} settled via Stripe.`,
+    })
+    onSuccess?.()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center space-y-1">
+        <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">
+          Amount Due
+        </span>
+        <div className="text-2xl font-extrabold text-primary font-mono">
+          ₹{instalment.emiAmount.toLocaleString('en-IN')}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Due on {new Date(instalment.dueDate).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
+      </div>
+
+      <PaymentElement
+        options={{
+          layout: 'tabs',
+          fields: { billingDetails: 'never' },
+        }}
+      />
+
+      {errorMessage && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive/80">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      <Button
+        type="submit"
+        disabled={!stripe || !elements || submitting}
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 cursor-pointer"
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Processing Payment…
+          </>
+        ) : (
+          <>
+            <CreditCard className="w-4 h-4 mr-2" />
+            Pay ₹{instalment.emiAmount.toLocaleString('en-IN')}
+          </>
+        )}
+      </Button>
+
+      <p className="text-[10px] text-muted-foreground/50 text-center">
+        Secured by Stripe · Your card will be charged immediately
+      </p>
+    </form>
+  )
+}
 
 export default function Repayments() {
   const [schedules, setSchedules] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('pending') // pending | paid
 
-  // Selected instalment for simulated payment
+  // Selected instalment for payment
   const [payingInstalment, setPayingInstalment] = useState(null)
-  const [payLoading, setPayLoading] = useState(false)
+  const [step, setStep] = useState('confirm') // 'confirm' | 'payment'
+  const [clientSecret, setClientSecret] = useState(null)
+  const [initLoading, setInitLoading] = useState(false)
+  const [initError, setInitError] = useState('')
 
   const fetchRepayments = async () => {
     setLoading(true)
@@ -53,6 +155,19 @@ export default function Repayments() {
   useEffect(() => {
     fetchRepayments()
   }, [])
+
+  // Reset the dialog state when it closes
+  useEffect(() => {
+    if (!payingInstalment) {
+      const t = setTimeout(() => {
+        setStep('confirm')
+        setClientSecret(null)
+        setInitLoading(false)
+        setInitError('')
+      }, 200)
+      return () => clearTimeout(t)
+    }
+  }, [payingInstalment])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -93,20 +208,27 @@ export default function Repayments() {
     return schedules.filter(item => item.status === 'paid')
   }, [schedules, activeTab])
 
-  // Handle pay confirmation
-  const handlePayment = async () => {
+  // Step 1: create the PaymentIntent for this instalment
+  const handleInitiatePayment = async () => {
     if (!payingInstalment) return
-    setPayLoading(true)
+    setInitLoading(true)
+    setInitError('')
     try {
       const { data } = await api.post(`/repayments/${payingInstalment._id}/pay`)
-      toast.success(data.message || 'Instalment paid successfully')
-      setPayingInstalment(null)
-      fetchRepayments()
+      setClientSecret(data.clientSecret)
+      setStep('payment')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Repayment processing failed')
+      const msg = err.response?.data?.message || 'Failed to initiate payment. Please try again.'
+      setInitError(msg)
+      toast.error(msg)
     } finally {
-      setPayLoading(false)
+      setInitLoading(false)
     }
+  }
+
+  const handlePaymentSuccess = () => {
+    setPayingInstalment(null)
+    fetchRepayments()
   }
 
   const getStatusBadge = (status) => {
@@ -316,18 +438,20 @@ export default function Repayments() {
           <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Auto-Debit Guarantee
+                <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Secure Card Payments
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground space-y-3 leading-relaxed">
               <p>
-                All micro-loans include <strong>Automated Clearing House (ACH) / NACH</strong> authorization. Dues are automatically debited on their scheduled date.
+                Instalments are paid securely via <strong>Stripe Payment Intents</strong> — your card is
+                charged only when you confirm a payment.
               </p>
               <p>
-                To avoid <strong>overdue status</strong> or bank bounce fees, ensure your connected bank account is funded at least 24 hours prior to the due date.
+                Repayments are processed <strong>in order</strong>: each instalment unlocks after the
+                previous one is settled, keeping your amortisation schedule accurate.
               </p>
               <p className="text-primary/90 font-medium">
-                Tip: Paying early manually logs the transaction instantly and avoids any gateway delays.
+                Tip: Paying on time keeps your loan in good standing and avoids overdue status.
               </p>
             </CardContent>
           </Card>
@@ -388,55 +512,70 @@ export default function Repayments() {
             </DialogDescription>
           </DialogHeader>
 
-          {payingInstalment && (
-            <div className="space-y-4 pt-2">
-              <div className="p-4 rounded-xl bg-background border border-border text-center space-y-1">
-                <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">
-                  Amount Due
-                </span>
-                <div className="text-2xl font-extrabold text-primary font-mono">
-                  ₹{payingInstalment.emiAmount.toLocaleString('en-IN')}
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Due on {new Date(payingInstalment.dueDate).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </p>
-              </div>
+          {step === 'confirm' ? (
+            <>
+              {payingInstalment && (
+                <div className="space-y-4 pt-2">
+                  <div className="p-4 rounded-xl bg-background border border-border text-center space-y-1">
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">
+                      Amount Due
+                    </span>
+                    <div className="text-2xl font-extrabold text-primary font-mono">
+                      ₹{payingInstalment.emiAmount.toLocaleString('en-IN')}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Due on {new Date(payingInstalment.dueDate).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
 
-              <div className="text-xs text-muted-foreground space-y-2">
-                <div className="flex justify-between py-1 border-b border-border/80">
-                  <span>Interest rate</span>
-                  <span className="font-semibold text-foreground">12.0% p.a.</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-border/80">
-                  <span>Payment Gateway</span>
-                  <span className="font-semibold text-primary">Mock Stripe Intent</span>
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="text-xs text-muted-foreground space-y-2">
+                    <div className="flex justify-between py-1 border-b border-border/80">
+                      <span>Interest rate</span>
+                      <span className="font-semibold text-foreground">12.0% p.a.</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-border/80">
+                      <span>Payment Gateway</span>
+                      <span className="font-semibold text-primary">Stripe Secure Checkout</span>
+                    </div>
+                  </div>
 
-          <DialogFooter className="bg-background/40 border-t border-border/60 p-4 -mx-4 -mb-4">
-            <Button
-              variant="ghost"
-              onClick={() => setPayingInstalment(null)}
-              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handlePayment}
-              disabled={payLoading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4"
-            >
-              {payLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...
-                </>
-              ) : (
-                'Confirm & Pay Now'
+                  {initError && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive/80">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{initError}</span>
+                    </div>
+                  )}
+                </div>
               )}
-            </Button>
-          </DialogFooter>
+
+              <DialogFooter className="bg-background/40 border-t border-border/60 p-4 -mx-4 -mb-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setPayingInstalment(null)}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleInitiatePayment}
+                  disabled={initLoading}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4"
+                >
+                  {initLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Preparing Checkout…
+                    </>
+                  ) : (
+                    'Continue to Payment'
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <PaymentForm instalment={payingInstalment} onSuccess={handlePaymentSuccess} />
+            </Elements>
+          )}
         </DialogContent>
       </Dialog>
     </div>

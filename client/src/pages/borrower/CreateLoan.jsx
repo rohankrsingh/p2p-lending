@@ -55,8 +55,9 @@ export default function CreateLoan() {
     [amount, interestRate, tenure]
   )
 
-  const platformFee = Math.round(amount * 0.02) // 2% platform processing fee
-  const netDisbursal = amount - platformFee
+  // Per-EMI platform fee: 2% of each instalment is retained by the platform
+  const perEmiFee = Math.round(emi * 0.02)
+  const lenderPayoutPerEmi = emi - perEmiFee
 
   // Simulated schedule breakdown
   const scheduleItems = useMemo(() => {
@@ -371,16 +372,26 @@ export default function CreateLoan() {
                 </div>
 
                 <div className="flex justify-between items-center py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">Platform Fee (2%)</span>
+                  <span className="text-muted-foreground">Amount Disbursed on Funding</span>
+                  <span className="font-semibold font-mono text-primary">
+                    ₹{amount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-1 border-b border-border/50">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    Platform Fee
+                    <Info className="w-3.5 h-3.5 text-muted-foreground/70" />
+                  </span>
                   <span className="font-semibold font-mono text-muted-foreground">
-                    - ₹{platformFee.toLocaleString('en-IN')}
+                    2% of each EMI (₹{perEmiFee.toLocaleString('en-IN')}/mo)
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5 bg-muted/50 rounded-lg px-2.5">
-                  <span className="text-xs font-semibold text-foreground">Net Disbursal Amount</span>
+                  <span className="text-xs font-semibold text-foreground">Lender Receives Per EMI</span>
                   <span className="font-bold font-mono text-primary text-base">
-                    ₹{netDisbursal.toLocaleString('en-IN')}
+                    ₹{lenderPayoutPerEmi.toLocaleString('en-IN')}
                   </span>
                 </div>
 
