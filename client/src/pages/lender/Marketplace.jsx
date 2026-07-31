@@ -74,9 +74,11 @@ export default function Marketplace() {
       if (tenure) params.append('tenure', tenure)
 
       const { data } = await api.get(`/loans/marketplace?${params.toString()}`)
-      setLoans(data.loans)
-      setPagination(data.pagination)
+      console.log('Marketplace data:', data)
+      setLoans(data.loans || [])
+      setPagination(data.pagination || { total: 0, page: 1, limit: 6, pages: 1 })
     } catch (err) {
+      console.error('Marketplace fetch error:', err)
       toast.error('Failed to load marketplace listings')
     } finally {
       setLoading(false)

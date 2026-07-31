@@ -35,11 +35,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import api from '@/lib/api'
+import { useAuthStore } from '@/store/useAuthStore'
 
 // ── Inner form that lives inside <Elements> context ───────────────
 function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
   const stripe = useStripe()
   const elements = useElements()
+  const user = useAuthStore((s) => s.user)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -50,10 +52,18 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
     setSubmitting(true)
     setErrorMessage('')
 
+    const billingDetails = {
+      name: user?.name || 'Lender',
+      ...(user?.email ? { email: user.email } : {}),
+    }
+
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: window.location.href,
+        payment_method_data: {
+          billing_details: billingDetails,
+        },
       },
       redirect: 'if_required',
     })
