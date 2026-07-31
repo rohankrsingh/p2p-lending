@@ -193,7 +193,7 @@ export default function Dashboard() {
                   </CardDescription>
                 </div>
                 <span
-                  onClick={() => navigate('/borrower/loans')}
+                  onClick={() => navigate('/borrower/my-loans')}
                   className="text-xs text-primary hover:underline font-semibold flex items-center cursor-pointer"
                 >
                   All Loans <ChevronRight className="w-3.5 h-3.5 ml-0.5" />

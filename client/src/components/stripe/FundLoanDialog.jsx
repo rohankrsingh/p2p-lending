@@ -24,7 +24,6 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogMedia,
 } from '@/components/ui/alert-dialog'
 import {
   Dialog,
@@ -183,9 +182,11 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
       <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
-            <AlertDialogMedia className="bg-primary/10 border border-primary/20 text-primary">
-              <ShieldCheck className="size-5" />
-            </AlertDialogMedia>
+            <div className="flex justify-center mb-2">
+              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+            </div>
             <AlertDialogTitle className="text-foreground text-base font-bold">
               Confirm Loan Funding
             </AlertDialogTitle>
