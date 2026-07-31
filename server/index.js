@@ -19,19 +19,19 @@ const PORT = process.env.PORT || 5000;
 
 // ── Middleware ────────────────────────────────────────────────────
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const allowedOrigins = [CLIENT_URL];
-// Allow common dev ports
-['5173', '5174', '5175', '3000'].forEach((port) => {
-  const url = `http://localhost:${port}`;
-  if (!allowedOrigins.includes(url)) allowedOrigins.push(url);
-});
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // Allow curl/mobile/no-origin
+  if (origin.startsWith('http://localhost:')) return true; // All localhost ports
+  if (origin.endsWith('.vercel.app')) return true; // All Vercel preview + prod URLs
+  if (origin === CLIENT_URL) return true;
+  return false;
+};
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    cb(null, true); // In dev, be permissive
+    if (isAllowedOrigin(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
 }));
