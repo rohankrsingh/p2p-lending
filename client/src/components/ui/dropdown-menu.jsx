@@ -63,8 +63,10 @@ function DropdownMenuLabel({
   inset,
   ...props
 }) {
+  // Base UI Menu.GroupLabel requires Menu.Group context. Render a plain styled
+  // div so the label can be used at the top level of the dropdown.
   return (
-    <MenuPrimitive.GroupLabel
+    <div
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(

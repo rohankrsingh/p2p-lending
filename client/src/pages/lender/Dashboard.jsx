@@ -124,7 +124,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => navigate('/lender/marketplace')}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 text-xs px-4 shadow-lg shadow-primary/10 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 text-xs px-4 cursor-pointer"
           >
             Invest Capital <Store className="w-3.5 h-3.5 ml-2" />
           </Button>
@@ -216,13 +216,13 @@ export default function Dashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-900">
+                  <div className="divide-y divide-border">
                     {filteredInvestments.map((inv) => {
                       const borrowerName = inv.loanRequestId?.userId?.name || 'Anonymous'
                       return (
                         <motion.div
                           key={inv._id}
-                          whileHover={{ backgroundColor: 'rgba(30,41,59,0.3)' }}
+                          whileHover={{ backgroundColor: 'var(--row-hover)' }}
                           className="p-5 flex items-center justify-between gap-4 transition-colors rounded-lg"
                         >
                           <div className="flex items-center gap-3">
@@ -270,13 +270,13 @@ export default function Dashboard() {
                 {recentTransactions.length === 0 ? (
                   <p className="p-6 text-muted-foreground/70 text-xs text-center">No recent wallet transactions.</p>
                 ) : (
-                  <div className="divide-y divide-slate-900">
+                  <div className="divide-y divide-border">
                     {recentTransactions.map((tx) => {
                       const isOutflow = tx.type === 'funding'
                       return (
                         <motion.div
                           key={tx._id}
-                          whileHover={{ backgroundColor: 'rgba(30,41,59,0.3)' }}
+                          whileHover={{ backgroundColor: 'var(--row-hover)' }}
                           className="p-4 flex items-center justify-between gap-3 text-xs rounded-lg transition-colors"
                         >
                           <div className="flex items-center gap-3">
@@ -315,7 +315,7 @@ export default function Dashboard() {
 
           {/* Quick stats summary - inspired by 21st.dev service cards */}
           <motion.div variants={itemVariants}>
-            <Card className="border-border bg-gradient-to-b from-slate-900 to-slate-950 shadow-md">
+            <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-primary" /> Portfolio at a Glance

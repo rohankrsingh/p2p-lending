@@ -91,12 +91,12 @@ export function AppSidebar({ ...props }) {
   }, [user])
 
   return (
-    <Sidebar variant="inset" className="border-border bg-[#0a0a0e] text-foreground" {...props}>
+    <Sidebar variant="inset" className="border-border bg-sidebar text-sidebar-foreground" {...props}>
       <SidebarHeader className="border-b border-border/60 py-4 px-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-muted/40">
-              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20">
+              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold shadow-cta">
                 <Landmark className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight ml-2">

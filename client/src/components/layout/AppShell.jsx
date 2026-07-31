@@ -34,9 +34,9 @@ export default function AppShell() {
       <div className="flex min-h-screen bg-background w-full text-foreground">
         <AppSidebar />
         
-        <SidebarInset className="bg-[#050508] border-l border-border flex-1 flex flex-col">
+        <SidebarInset className="bg-background border-l border-border flex-1 flex flex-col">
           {/* Header Bar */}
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6 relative z-10 bg-[#050508]/80 backdrop-blur-md">
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6 relative z-10 bg-background/80 backdrop-blur-md">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground hover:bg-card rounded-lg cursor-pointer" />
             <Separator orientation="vertical" className="h-4 bg-muted" />
             <h2 className="text-sm font-semibold tracking-tight text-foreground m-0">

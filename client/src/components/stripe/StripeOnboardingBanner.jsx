@@ -68,17 +68,17 @@ export default function StripeOnboardingBanner() {
   if (dismissed) return null
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/60 via-slate-900/80 to-indigo-950/60 shadow-lg shadow-indigo-900/10 mb-6">
+    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/15 via-muted to-primary/15 shadow-pop mb-6">
       {/* Subtle grid pattern overlay */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDQwdjQwSDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTAgMjBoNDBNMjAgMHY0MCIgc3Ryb2tlPSIjMzhhZGY4IiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDYiLz48L3N2Zz4=')] opacity-40" />
 
       <div className="relative flex items-start gap-4 p-4 sm:p-5">
         {/* Icon */}
-        <div className="hidden sm:flex w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center shrink-0 mt-0.5">
+        <div className="hidden sm:flex w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center shrink-0 mt-0.5">
           {status.hasAccount ? (
             <AlertCircle className="w-5 h-5 text-warning" />
           ) : (
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
+            <ShieldCheck className="w-5 h-5 text-primary" />
           )}
         </div>
 
@@ -107,10 +107,10 @@ export default function StripeOnboardingBanner() {
           {/* Quick stats row */}
           <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground/70">
             <span className="flex items-center gap-1">
-              <Banknote className="w-3 h-3 text-indigo-400" /> 2% platform fee
+              <Banknote className="w-3 h-3 text-foreground" /> 2% platform fee
             </span>
             <span className="flex items-center gap-1">
-              <ExternalLink className="w-3 h-3 text-indigo-400" /> Secure Stripe hosted UI
+              <ExternalLink className="w-3 h-3 text-foreground" /> Secure Stripe hosted UI
             </span>
           </div>
 
@@ -119,7 +119,7 @@ export default function StripeOnboardingBanner() {
             <Button
               size="sm"
               onClick={() => navigate('/lender/onboarding')}
-              className="bg-indigo-500 hover:bg-indigo-400 text-foreground font-semibold text-xs h-8 px-4 shadow-lg shadow-indigo-500/20 cursor-pointer"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8 px-4 shadow-cta cursor-pointer"
             >
               {status.hasAccount ? 'Complete Verification' : 'Start Onboarding'}
               <ArrowRight className="w-3 h-3 ml-1.5" />

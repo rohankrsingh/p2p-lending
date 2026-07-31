@@ -19,12 +19,15 @@ import LenderOnboarding from '@/pages/lender/Onboarding'
 
 // Layout guards
 import RoleGuard from '@/components/layout/RoleGuard'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 import { useAuthStore } from '@/store/useAuthStore'
 
 export default function App() {
   const user = useAuthStore((s) => s.user)
 
   return (
+    <>
+    
     <Routes>
       {/* Public — no sidebar */}
       <Route path="/login" element={<Login />} />
@@ -58,5 +61,7 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ThemeSwitcher />
+    </>
   )
 }

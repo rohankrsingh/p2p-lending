@@ -114,7 +114,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => navigate('/borrower/create-loan')}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 text-xs px-4 shadow-lg shadow-primary/10 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 text-xs px-4 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" /> New Loan Request
           </Button>
@@ -214,7 +214,7 @@ export default function Dashboard() {
                   </Button>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-900">
+                <div className="divide-y divide-border">
                   {activeLoans.map((loan) => (
                     <div key={loan._id} className="p-5 space-y-3 hover:bg-accent/30 transition-colors">
                       <div className="flex items-center justify-between">
@@ -278,7 +278,7 @@ export default function Dashboard() {
               {upcomingRepayments.length === 0 ? (
                 <p className="p-6 text-muted-foreground/70 text-xs text-center">No upcoming repayments — all caught up!</p>
               ) : (
-                <div className="divide-y divide-slate-900">
+                <div className="divide-y divide-border">
                   {upcomingRepayments.map((inst) => {
                     const isOverdue = inst.status === 'overdue'
                     const daysUntilDue = Math.ceil(
@@ -343,7 +343,7 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-slate-900">
+                <div className="divide-y divide-border">
                   {pendingLoans.slice(0, 3).map((loan) => (
                     <div key={loan._id} className="p-4 flex items-center justify-between gap-3">
                       <div className="space-y-0.5">
@@ -363,7 +363,7 @@ export default function Dashboard() {
           )}
 
           {/* Quick Info Card */}
-          <Card className="border-border bg-gradient-to-b from-slate-900 to-slate-950 shadow-md">
+          <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                 <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Loan at a Glance

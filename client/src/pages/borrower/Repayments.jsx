@@ -251,7 +251,7 @@ export default function Repayments() {
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-900">
+                <div className="divide-y divide-border">
                   {filteredInstalments.map((item) => (
                     <div
                       key={item._id}
@@ -295,7 +295,7 @@ export default function Repayments() {
                             <Button
                               size="sm"
                               onClick={() => setPayingInstalment(item)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-8 text-xs px-3 shadow-md shadow-primary/10 cursor-pointer"
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-8 text-xs px-3 cursor-pointer"
                             >
                               Pay Now
                             </Button>
@@ -313,7 +313,7 @@ export default function Repayments() {
         {/* ── Right Column: Platform Disclosures & Transaction Log summary ── */}
         <div className="lg:col-span-4 space-y-6">
           {/* Security details card */}
-          <Card className="border-border bg-gradient-to-b from-slate-900 to-slate-950 shadow-md">
+          <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                 <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Auto-Debit Guarantee
@@ -426,7 +426,7 @@ export default function Repayments() {
             <Button
               onClick={handlePayment}
               disabled={payLoading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4 shadow-lg shadow-primary/10"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4"
             >
               {payLoading ? (
                 <>

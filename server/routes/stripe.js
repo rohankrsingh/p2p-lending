@@ -47,9 +47,11 @@ router.post(
       }
 
       // Create a Stripe Express account
+      // Note: country must match the platform's supported region.
+      // Test platforms may be US-based; adjust for production.
       const account = await stripe.accounts.create({
         type: 'express',
-        country: 'IN',
+        country: 'US',
         email: user.email,
         capabilities: {
           card_payments: { requested: true },
@@ -302,16 +304,17 @@ export const stripeWebhookHandler = async (req, res) => {
           console.log(`[Stripe Webhook] Successfully funded loan ${loanRequestId}`);
 
           // Send loan-funded email to borrower (fire and forget)
-          User.findById(borrowerId).then((user) => {
-            if (user) {
-              sendLoanFundedEmail({
-                borrowerEmail: user.email,
-                borrowerName: user.name,
-                amount: parseFloat(paymentIntent.amount) / 100,
-                tenure: 0, // will be populated from loanRequest if needed
-              });
-            }
-          }).catch(() => {});
+          // TODO: Re-enable when email service is configured
+          // User.findById(borrowerId).then((user) => {
+          //   if (user) {
+          //     sendLoanFundedEmail({
+          //       borrowerEmail: user.email,
+          //       borrowerName: user.name,
+          //       amount: parseFloat(paymentIntent.amount) / 100,
+          //       tenure: loanRequest.tenure,
+          //     });
+          //   }
+          // }).catch(() => {});
         }
 
         // ── Repayment payment ─────────────────────────────────────
@@ -325,6 +328,7 @@ export const stripeWebhookHandler = async (req, res) => {
 
           const repaymentAmount = parseFloat(emiAmount || '0');
           const PLATFORM_FEE_RATE = 0.02; // 2% platform fee
+const PLATFORM_FEE_PERCENT = 2; // For display purposes
           const platformFee = Math.round(repaymentAmount * PLATFORM_FEE_RATE * 100) / 100;
           const lenderPayout = repaymentAmount - platformFee;
 
@@ -425,17 +429,18 @@ export const stripeWebhookHandler = async (req, res) => {
           console.log(`[Stripe Webhook] Successfully processed repayment ${repaymentScheduleId}`);
 
           // Send repayment-received email to lender (fire and forget)
-          const lenderUser = await User.findById(rl);
-          const borrowerUser = await User.findById(rb);
-          if (lenderUser) {
-            sendRepaymentReceivedEmail({
-              lenderEmail: lenderUser.email,
-              lenderName: lenderUser.name,
-              amount: repaymentAmount,
-              borrowerName: borrowerUser?.name || 'Borrower',
-              instalmentNumber: parseInt(paymentIntent.metadata.instalmentNumber || '0'),
-            });
-          }
+          // TODO: Re-enable when email service is configured
+          // const lenderUser = await User.findById(rl);
+          // const borrowerUser = await User.findById(rb);
+          // if (lenderUser) {
+          //   sendRepaymentReceivedEmail({
+          //     lenderEmail: lenderUser.email,
+          //     lenderName: lenderUser.name,
+          //     amount: repaymentAmount,
+          //     borrowerName: borrowerUser?.name || 'Borrower',
+          //     instalmentNumber: parseInt(paymentIntent.metadata.instalmentNumber || '0'),
+          //   });
+          // }
         }
         break;
       }

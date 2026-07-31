@@ -257,7 +257,7 @@ export default function Marketplace() {
               }}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <Card className="border-border bg-card hover:bg-card/80 hover:border-border transition-all flex flex-col justify-between shadow-lg h-full">
+              <Card className="border-border bg-card hover:bg-card/80 hover:border-border transition-all flex flex-col justify-between h-full">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-0.5">
@@ -446,7 +446,7 @@ export default function Marketplace() {
             <Button
               onClick={handleFundLoan}
               disabled={detailsLoading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4 shadow-lg shadow-primary/10"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold cursor-pointer text-xs h-10 px-4"
             >
               Fund This Loan <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>

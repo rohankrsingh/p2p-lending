@@ -105,7 +105,7 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
       <Button
         type="submit"
         disabled={!stripe || !elements || submitting}
-        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-lg shadow-primary/10 cursor-pointer"
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-cta cursor-pointer"
       >
         {submitting ? (
           <>
@@ -302,10 +302,10 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
               appearance: {
                 theme: 'night',
                 variables: {
-                  colorPrimary: '#10b981',
-                  colorBackground: '#0f172a',
-                  colorText: '#f1f5f9',
-                  colorDanger: '#ef4444',
+                  colorPrimary: 'var(--primary)',
+                  colorBackground: 'var(--card)',
+                  colorText: 'var(--foreground)',
+                  colorDanger: 'var(--destructive)',
                   fontFamily: 'Geist, system-ui, sans-serif',
                   borderRadius: '12px',
                 },

@@ -15,8 +15,8 @@ const roles = [
     icon: ShieldCheck,
     title: 'Borrower',
     subtitle: 'Apply for micro-loans up to ₹50,000',
-    accent: 'border-white/10 bg-white/5 text-foreground hover:border-primary/50',
-    activeAccent: 'border-primary bg-primary/20 text-foreground ring-1 ring-blue-500',
+    accent: 'border-border bg-muted/40 text-foreground hover:border-primary/50',
+    activeAccent: 'border-primary bg-primary/15 text-foreground ring-1 ring-primary/40',
     badge: 'Borrower Desk',
   },
   {
@@ -24,8 +24,8 @@ const roles = [
     icon: TrendingUp,
     title: 'Investor / Lender',
     subtitle: 'Fund loans & earn 12% annual returns',
-    accent: 'border-white/10 bg-white/5 text-foreground hover:border-primary/50',
-    activeAccent: 'border-primary bg-primary/20 text-foreground ring-1 ring-primary-500',
+    accent: 'border-border bg-muted/40 text-foreground hover:border-primary/50',
+    activeAccent: 'border-primary bg-primary/15 text-foreground ring-1 ring-primary/40',
     badge: 'Capital Partner',
   },
 ]
@@ -61,17 +61,17 @@ export default function Register() {
   }
 
   return (
-    <section className="min-h-screen bg-[#050508] p-3 text-foreground antialiased">
+    <section className="min-h-screen bg-background p-3 text-foreground antialiased">
       <div className="grid min-h-[calc(100vh-1.5rem)] gap-6 lg:grid-cols-[0.94fr_1.06fr]">
         
         {/* ── Left Column: Sign Up Form ── */}
-        <div className="flex min-h-[640px] items-center justify-center rounded-2xl border border-white/10 bg-[#0a0a0e] px-6 py-12 lg:min-h-0 lg:px-14 lg:py-16 xl:px-20 relative overflow-hidden">
+        <div className="auth-panel relative flex min-h-[640px] items-center justify-center overflow-hidden rounded-2xl px-6 py-12 lg:min-h-0 lg:px-14 lg:py-16 xl:px-20">
           <div className="mx-auto w-full max-w-[460px] space-y-8">
             
             {/* Header / Brand */}
             <div>
               <div className="flex items-center gap-2.5 mb-6">
-                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20">
+                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground font-bold shadow-cta">
                   <Landmark className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-lg tracking-tight text-foreground">P2P Lend</span>
@@ -111,7 +111,7 @@ export default function Register() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <Icon className={cn('w-5 h-5', isActive ? 'text-primary' : 'text-foreground/60')} />
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-foreground/70">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-muted/60 border border-border text-foreground/70">
                             {badge}
                           </span>
                         </div>
@@ -137,7 +137,7 @@ export default function Register() {
                     required
                     value={form.name}
                     onChange={handleChange}
-                    className="h-11 rounded-lg border-white/15 bg-white/5 px-4 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary focus:ring-primary-500/20"
+                    className="h-11 rounded-lg border-border bg-muted/40 px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary focus:ring-primary/20"
                   />
                 </div>
 
@@ -153,7 +153,7 @@ export default function Register() {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="h-11 rounded-lg border-white/15 bg-white/5 px-4 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary focus:ring-primary-500/20"
+                    className="h-11 rounded-lg border-border bg-muted/40 px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary focus:ring-primary/20"
                   />
                 </div>
 
@@ -170,7 +170,7 @@ export default function Register() {
                     minLength={6}
                     value={form.password}
                     onChange={handleChange}
-                    className="h-11 rounded-lg border-white/15 bg-white/5 px-4 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary focus:ring-primary-500/20"
+                    className="h-11 rounded-lg border-border bg-muted/40 px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -178,7 +178,7 @@ export default function Register() {
               <Button
                 type="submit"
                 disabled={loading || !role}
-                className="mt-6 flex h-11 w-full items-center justify-center rounded-lg border border-primary/50 bg-primary text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
+                className="mt-6 flex h-11 w-full items-center justify-center rounded-lg border border-primary/50 bg-primary text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer disabled:opacity-50"
               >
                 {loading ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating Account...</>
@@ -192,14 +192,14 @@ export default function Register() {
         </div>
 
         {/* ── Right Column: Showcase & Platform Features ── */}
-        <div className="relative flex min-h-[640px] flex-col overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900 via-[#0a0f1d] to-[#050508] p-8 text-foreground sm:p-12 lg:min-h-0 lg:p-16 justify-between border border-white/10">
+        <div className="auth-splash relative flex min-h-[640px] flex-col justify-between overflow-hidden rounded-2xl p-8 text-foreground sm:p-12 lg:min-h-0 lg:p-16">
           
           {/* Subtle Ambient Glow */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/15 rounded-full blur-[100px] pointer-events-none" />
 
           {/* Testimonial & Quote */}
           <div className="relative z-10 max-w-[460px] space-y-6 pt-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Peer-to-Peer Direct Credit</span>
             </div>
@@ -223,8 +223,8 @@ export default function Register() {
           </div>
 
           {/* Floating Platform Card Preview */}
-          <div className="relative z-10 mt-8 rounded-xl border border-white/15 bg-black/60 p-5 backdrop-blur-xl shadow-2xl space-y-4">
-            <div className="flex items-center justify-between text-xs border-b border-white/10 pb-3">
+          <div className="auth-glass relative z-10 mt-8 rounded-xl p-5 backdrop-blur-xl shadow-(--shadow-pop) space-y-4">
+            <div className="flex items-center justify-between text-xs border-b border-border/60 pb-3">
               <span className="font-medium text-foreground/70 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-primary" /> Platform Financial Guarantees
               </span>
@@ -232,12 +232,12 @@ export default function Register() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
                 <p className="text-[10px] text-foreground/50 uppercase font-medium">Borrower Desk</p>
                 <p className="text-sm font-bold text-foreground mt-1">₹1,000 to ₹50,000</p>
                 <p className="text-[10px] text-primary mt-0.5">Flexible 3 to 24 mos</p>
               </div>
-              <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
                 <p className="text-[10px] text-foreground/50 uppercase font-medium">Investor Desk</p>
                 <p className="text-sm font-bold text-primary mt-1">12% Fixed Returns</p>
                 <p className="text-[10px] text-foreground/50 mt-0.5">Monthly EMI Payouts</p>

@@ -4,7 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <meta name="theme-color" content="#0e1014" />
+    <title>P2P Lend — Peer-to-Peer Micro-Lending</title>
+    <script>
+      // Apply saved theme before first paint to avoid a flash
+      ;(function () {
+        try {
+          var raw = localStorage.getItem('p2p-theme')
+          var s = raw ? JSON.parse(raw) : null
+          var d = document.documentElement
+          d.dataset.theme = (s && s.direction) || 'ledger'
+          d.classList.toggle('dark', !s || (s && s.mode) === 'dark')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

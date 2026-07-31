@@ -34,6 +34,8 @@ import {
 import { calculateEMI } from '@/lib/emi'
 import api from '@/lib/api'
 
+const TENURE_OPTIONS = [3, 6, 9, 12, 18, 24]
+
 export default function MyLoans() {
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -320,7 +322,7 @@ export default function MyLoans() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredLoans.map((loan) => (
-            <Card key={loan._id} className="border-border bg-card hover:bg-card/80 transition-colors shadow-lg overflow-hidden flex flex-col justify-between">
+            <Card key={loan._id} className="border-border bg-card hover:bg-card/80 transition-colors overflow-hidden flex flex-col justify-between">
               
               {/* Card Header & Badges */}
               <CardHeader className="pb-4">

@@ -15,6 +15,7 @@ import {
   Activity,
   History,
   ShieldCheck,
+  ArrowRight,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -264,7 +265,7 @@ export default function Investments() {
               : 0
 
             return (
-              <Card key={inv._id} className="border-border bg-card hover:bg-card/80 transition-colors shadow-lg overflow-hidden flex flex-col justify-between">
+              <Card key={inv._id} className="border-border bg-card hover:bg-card/80 transition-colors overflow-hidden flex flex-col justify-between">
                 
                 {/* Header */}
                 <CardHeader className="pb-4">
