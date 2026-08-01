@@ -376,6 +376,14 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Shadow utilities — reference the per-direction tokens so bare
+     `shadow-card` / `shadow-cta` / `shadow-pop` classes resolve
+     against whichever direction + mode is active. */
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-cta: var(--shadow-cta);
+  --shadow-pop: var(--shadow-pop);
 }
 
 /* ── Theme-scoped component treatments ── */
@@ -441,8 +449,14 @@
   }
   html {
     color-scheme: light;
+    scroll-behavior: smooth;
   }
   html.dark {
     color-scheme: dark;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }

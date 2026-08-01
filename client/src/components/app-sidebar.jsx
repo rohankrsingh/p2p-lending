@@ -21,7 +21,6 @@ import {
   Store,
   TrendingUp,
   Wallet,
-  Settings,
   Landmark,
 } from "lucide-react"
 
@@ -53,11 +52,6 @@ export function AppSidebar({ ...props }) {
           url: "/borrower/repayments",
           icon: CreditCard,
         },
-        {
-          title: "Settings",
-          url: "/borrower/settings",
-          icon: Settings,
-        },
       ]
     } else {
       return [
@@ -80,11 +74,6 @@ export function AppSidebar({ ...props }) {
           title: "Payouts",
           url: "/lender/payouts",
           icon: Wallet,
-        },
-        {
-          title: "Settings",
-          url: "/lender/settings",
-          icon: Settings,
         },
       ]
     }

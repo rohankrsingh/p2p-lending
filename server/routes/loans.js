@@ -228,6 +228,39 @@ router.get('/marketplace', protect, requireRole('lender'), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/loans/featured
+ * Public — recent pending loan requests for the landing page.
+ * Returns only safe, non-sensitive fields (no emails, no user ids).
+ */
+router.get('/featured', async (req, res) => {
+  try {
+    const loans = await LoanRequest.find({ status: 'pending' })
+      .populate('userId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(6);
+
+    res.json({
+      loans: loans.map((loan) => ({
+        _id: loan._id,
+        amount: loan.amount,
+        tenure: loan.tenure,
+        interestRate: loan.interestRate,
+        reason: loan.reason,
+        createdAt: loan.createdAt,
+        borrowerName: loan.userId?.name || 'Anonymous borrower',
+        emi: calculateEMI(loan.amount, loan.interestRate, loan.tenure),
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LENDER routes
 // ─────────────────────────────────────────────────────────────────────────────
 

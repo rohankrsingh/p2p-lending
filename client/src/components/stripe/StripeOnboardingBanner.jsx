@@ -73,7 +73,7 @@ export default function StripeOnboardingBanner() {
     : (status.hasAccount ? 'Complete Verification' : 'Start Onboarding')
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/15 via-muted to-primary/15 shadow-pop mb-6">
+    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-linear-to-r from-primary/15 via-muted to-primary/15 shadow-pop mb-6">
       {/* Subtle grid pattern overlay */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDQwdjQwSDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTAgMjBoNDBNMjAgMHY0MCIgc3Ryb2tlPSIjMzhhZGY4IiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDYiLz48L3N2Zz4=')] opacity-40" />
 

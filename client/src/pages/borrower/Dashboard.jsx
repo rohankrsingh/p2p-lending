@@ -1,31 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  IndianRupee,
-  TrendingUp,
-  Activity,
   ArrowRight,
   ShieldCheck,
   Clock,
-  CheckCircle2,
   RefreshCw,
   Loader2,
   AlertTriangle,
-  Calendar,
   Plus,
-  Banknote,
   Wallet,
-  CreditCard,
-  Percent,
-  FileText,
   ChevronRight,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
 
 const STATUS_MAP = {
@@ -122,6 +112,7 @@ export default function Dashboard() {
             variant="outline"
             size="sm"
             onClick={fetchDashboard}
+            aria-label="Refresh"
             className="border-border bg-card hover:bg-muted text-foreground cursor-pointer h-9 px-3"
           >
             <RefreshCw className="w-4 h-4" />
@@ -159,7 +150,7 @@ export default function Dashboard() {
           <CardFooter className="pt-0 text-[10px] text-muted-foreground/70">Loans currently in repayment</CardFooter>
         </Card>
 
-        <Card className={`border-border bg-card shadow-md ${stats.overdueCount > 0 ? 'ring-1 ring-destructive-500/30' : ''}`}>
+          <Card className={`border-border bg-card shadow-md ${stats.overdueCount > 0 ? 'ring-1 ring-destructive/30' : ''}`}>
           <CardHeader className="pb-2">
             <CardDescription className="text-muted-foreground text-xs uppercase font-medium">Pending Requests</CardDescription>
             <div className="flex items-center gap-2">
@@ -192,12 +183,12 @@ export default function Dashboard() {
                     Repayment progress across all your loans.
                   </CardDescription>
                 </div>
-                <span
-                  onClick={() => navigate('/borrower/my-loans')}
+                <Link
+                  to="/borrower/my-loans"
                   className="text-xs text-primary hover:underline font-semibold flex items-center cursor-pointer"
                 >
                   All Loans <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                </span>
+                </Link>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -265,12 +256,12 @@ export default function Dashboard() {
             <CardHeader className="pb-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Upcoming Repayments</CardTitle>
-                <span
-                  onClick={() => navigate('/borrower/repayments')}
+                <Link
+                  to="/borrower/repayments"
                   className="text-xs text-primary hover:underline font-semibold flex items-center cursor-pointer"
                 >
                   View All <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                </span>
+                </Link>
               </div>
               <CardDescription className="text-muted-foreground text-xs">Next 3 instalments due.</CardDescription>
             </CardHeader>
@@ -363,7 +354,7 @@ export default function Dashboard() {
           )}
 
           {/* Quick Info Card */}
-          <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
+          <Card className="border-border bg-linear-to-b from-card to-muted/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                 <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Loan at a Glance

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   IndianRupee,
@@ -11,7 +12,6 @@ import {
   Trash2,
   Eye,
   ArrowRight,
-  TrendingUp,
   RefreshCw,
   Loader2,
   XCircle,
@@ -37,6 +37,7 @@ import api from '@/lib/api'
 const TENURE_OPTIONS = [3, 6, 9, 12, 18, 24]
 
 export default function MyLoans() {
+  const navigate = useNavigate()
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
@@ -57,7 +58,7 @@ export default function MyLoans() {
     setLoading(true)
     try {
       const { data } = await api.get('/loans/my')
-      setLoans(data)
+      setLoans(data.loans || [])
     } catch (err) {
       toast.error('Failed to fetch your loans')
     } finally {
@@ -87,7 +88,7 @@ export default function MyLoans() {
       if (loan.status === 'pending') {
         pendingCount++
       }
-    });
+    })
 
     return { totalBorrowed, activeCount, pendingCount, totalMonthlyEmi }
   }, [loans])
@@ -513,7 +514,7 @@ export default function MyLoans() {
                 max={50000}
                 value={editForm.amount}
                 onChange={(e) => setEditForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
-                className="bg-background border-border text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-primary-500/20 text-sm h-10 rounded-lg"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-primary/20 text-sm h-10 rounded-lg"
               />
             </div>
 
@@ -523,7 +524,7 @@ export default function MyLoans() {
                 id="edit-tenure"
                 value={editForm.tenure}
                 onChange={(e) => setEditForm(prev => ({ ...prev, tenure: Number(e.target.value) }))}
-                className="w-full bg-background border border-border text-foreground rounded-lg p-2 h-10 text-sm focus:border-primary focus:ring-primary-500/20 outline-none"
+                className="w-full bg-background border border-border text-foreground rounded-lg p-2 h-10 text-sm focus:border-primary focus:ring-primary/20 outline-none"
               >
                 {TENURE_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>{opt} Months</option>
@@ -538,7 +539,7 @@ export default function MyLoans() {
                 rows={3}
                 value={editForm.reason}
                 onChange={(e) => setEditForm(prev => ({ ...prev, reason: e.target.value }))}
-                className="bg-background border-border text-foreground focus:border-primary focus:ring-primary-500/20 text-sm rounded-lg resize-none"
+                className="bg-background border-border text-foreground focus:border-primary focus:ring-primary/20 text-sm rounded-lg resize-none"
                 placeholder="Explain purpose of loan..."
               />
             </div>

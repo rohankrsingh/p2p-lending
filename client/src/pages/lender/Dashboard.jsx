@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import {
-  IndianRupee,
   TrendingUp,
   Activity,
   ArrowRight,
@@ -17,13 +16,10 @@ import {
   Search,
   Landmark,
   Users,
-  Clock,
-  CheckCircle2,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
 
 // ── Animation variants (inspired by 21st.dev Financial Dashboard) ──
@@ -176,10 +172,11 @@ export default function Dashboard() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
         <input
           type="text"
+          aria-label="Search investments by borrower name"
           placeholder="Search investments by borrower name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary-500/30 focus:border-primary/50 outline-none transition-all"
+          className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none transition-all"
         />
       </motion.div>
 
@@ -222,8 +219,7 @@ export default function Dashboard() {
                       return (
                         <motion.div
                           key={inv._id}
-                          whileHover={{ backgroundColor: 'var(--row-hover)' }}
-                          className="p-5 flex items-center justify-between gap-4 transition-colors rounded-lg"
+                          className="p-5 flex items-center justify-between gap-4 transition-colors rounded-lg hover:bg-muted/40"
                         >
                           <div className="flex items-center gap-3">
                             <IconWrap icon={Users} className="bg-primary/10 text-primary shrink-0" />
@@ -241,11 +237,13 @@ export default function Dashboard() {
                               {inv.loanRequestId?.tenure} Mos @ {inv.loanRequestId?.interestRate || 12}%
                             </div>
                             <Badge className={
-                              inv.status === 'active' || inv.status === 'repaying'
-                                ? 'bg-primary/10 text-primary border-primary/30 text-[10px] font-mono'
-                                : 'bg-primary/10 text-primary border-primary/30 text-[10px] font-mono'
+                              inv.status === 'defaulted'
+                                ? 'bg-destructive/10 text-destructive border-destructive/30 text-[10px] font-mono'
+                                : inv.status === 'completed'
+                                  ? 'bg-success/10 text-success border-success/30 text-[10px] font-mono'
+                                  : 'bg-primary/10 text-primary border-primary/30 text-[10px] font-mono'
                             }>
-                              {inv.status === 'active' || inv.status === 'repaying' ? 'REPAYING' : 'COMPLETED'}
+                              {inv.status === 'defaulted' ? 'DEFAULTED' : inv.status === 'completed' ? 'COMPLETED' : 'REPAYING'}
                             </Badge>
                           </div>
                         </motion.div>
@@ -276,8 +274,7 @@ export default function Dashboard() {
                       return (
                         <motion.div
                           key={tx._id}
-                          whileHover={{ backgroundColor: 'var(--row-hover)' }}
-                          className="p-4 flex items-center justify-between gap-3 text-xs rounded-lg transition-colors"
+                          className="p-4 flex items-center justify-between gap-3 text-xs rounded-lg transition-colors hover:bg-muted/40"
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
@@ -315,7 +312,7 @@ export default function Dashboard() {
 
           {/* Quick stats summary - inspired by 21st.dev service cards */}
           <motion.div variants={itemVariants}>
-            <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
+            <Card className="border-border bg-linear-to-b from-card to-muted/70 shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-primary" /> Portfolio at a Glance

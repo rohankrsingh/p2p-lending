@@ -22,7 +22,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, LogOutIcon, UserIcon, ShieldIcon, SettingsIcon } from "lucide-react"
+import { ChevronsUpDownIcon, LogOutIcon, UserIcon, ShieldIcon } from "lucide-react"
 
 export function NavUser() {
   const { user, logout } = useAuthStore()
@@ -80,10 +80,6 @@ export function NavUser() {
               <DropdownMenuItem className="focus:bg-muted focus:text-foreground cursor-pointer" onClick={() => navigate(`/${user.role}/dashboard`)}>
                 <ShieldIcon className="mr-2 size-4 text-primary" />
                 Role: <span className="capitalize font-semibold text-primary ml-1">{user.role}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-muted focus:text-foreground cursor-pointer" onClick={() => navigate(`/${user.role}/settings`)}>
-                <SettingsIcon className="mr-2 size-4" />
-                Account Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="bg-muted" />

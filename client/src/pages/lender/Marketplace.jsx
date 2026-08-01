@@ -1,24 +1,16 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
-  IndianRupee,
   Calendar,
-  Clock,
   Filter,
-  ArrowUpDown,
   FileText,
   User,
-  ShieldCheck,
   CheckCircle2,
-  HelpCircle,
-  Eye,
   Loader2,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
-  Sparkles,
   Info,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,8 +34,6 @@ import FundLoanDialog from '@/components/stripe/FundLoanDialog'
 const TENURE_OPTIONS = [3, 6, 9, 12, 18, 24]
 
 export default function Marketplace() {
-  const navigate = useNavigate()
-
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 6, pages: 1 })
@@ -61,20 +51,23 @@ export default function Marketplace() {
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [showFundDialog, setShowFundDialog] = useState(false)
 
-  const fetchMarketplace = async () => {
+  const fetchMarketplace = async (overrides = {}) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      params.append('page', page)
+      params.append('page', overrides.page ?? page)
       params.append('limit', 6)
-      params.append('sort', sort)
+      params.append('sort', overrides.sort ?? sort)
 
-      if (minAmount) params.append('minAmount', minAmount)
-      if (maxAmount) params.append('maxAmount', maxAmount)
-      if (tenure) params.append('tenure', tenure)
+      const min = overrides.minAmount ?? minAmount
+      const max = overrides.maxAmount ?? maxAmount
+      const ten = overrides.tenure ?? tenure
+
+      if (min) params.append('minAmount', min)
+      if (max) params.append('maxAmount', max)
+      if (ten) params.append('tenure', ten)
 
       const { data } = await api.get(`/loans/marketplace?${params.toString()}`)
-      console.log('Marketplace data:', data)
       setLoans(data.loans || [])
       setPagination(data.pagination || { total: 0, page: 1, limit: 6, pages: 1 })
     } catch (err) {
@@ -123,7 +116,7 @@ export default function Marketplace() {
     setTenure('')
     setSort('newest')
     setPage(1)
-    setTimeout(() => fetchMarketplace(), 50)
+    fetchMarketplace({ page: 1, sort: 'newest', tenure: '', minAmount: '', maxAmount: '' })
   }
 
   return (
@@ -148,14 +141,18 @@ export default function Marketplace() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 flex-1">
             {/* Min Amount */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase font-semibold">Min Amount</Label>
+              <Label htmlFor="min-amount" className="text-xs text-muted-foreground uppercase font-semibold">Min Amount</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 text-xs font-semibold">₹</span>
                 <Input
+                  id="min-amount"
                   type="number"
                   placeholder="Min"
                   value={minAmount}
-                  onChange={(e) => setMinAmount(e.target.value)}
+                  onChange={(e) => {
+                    setMinAmount(e.target.value)
+                    setPage(1)
+                  }}
                   className="pl-6 bg-background border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary h-10 text-xs rounded-lg font-mono"
                 />
               </div>
@@ -163,14 +160,18 @@ export default function Marketplace() {
 
             {/* Max Amount */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase font-semibold">Max Amount</Label>
+              <Label htmlFor="max-amount" className="text-xs text-muted-foreground uppercase font-semibold">Max Amount</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 text-xs font-semibold">₹</span>
                 <Input
+                  id="max-amount"
                   type="number"
                   placeholder="Max"
                   value={maxAmount}
-                  onChange={(e) => setMaxAmount(e.target.value)}
+                  onChange={(e) => {
+                    setMaxAmount(e.target.value)
+                    setPage(1)
+                  }}
                   className="pl-6 bg-background border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary h-10 text-xs rounded-lg font-mono"
                 />
               </div>
@@ -178,10 +179,14 @@ export default function Marketplace() {
 
             {/* Tenure */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase font-semibold">Tenure</Label>
+              <Label htmlFor="tenure" className="text-xs text-muted-foreground uppercase font-semibold">Tenure</Label>
               <select
+                id="tenure"
                 value={tenure}
-                onChange={(e) => setTenure(e.target.value)}
+                onChange={(e) => {
+                  setTenure(e.target.value)
+                  setPage(1)
+                }}
                 className="w-full bg-background border border-border text-foreground rounded-lg p-2 h-10 text-xs focus:border-primary outline-none"
               >
                 <option value="">All Tenures</option>
@@ -193,10 +198,14 @@ export default function Marketplace() {
 
             {/* Sorting */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase font-semibold">Sort By</Label>
+              <Label htmlFor="sort" className="text-xs text-muted-foreground uppercase font-semibold">Sort By</Label>
               <select
+                id="sort"
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
+                onChange={(e) => {
+                  setSort(e.target.value)
+                  setPage(1)
+                }}
                 className="w-full bg-background border border-border text-foreground rounded-lg p-2 h-10 text-xs focus:border-primary outline-none"
               >
                 <option value="newest">Newest Requests</option>
@@ -246,7 +255,7 @@ export default function Marketplace() {
           animate="visible"
           variants={{
             hidden: { opacity: 0 },
-            visible: { transition: { staggerChildren: 0.06 } },
+            visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
           }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
@@ -453,18 +462,16 @@ export default function Marketplace() {
               Fund This Loan <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </DialogFooter>
-
-          {/* Fund loan confirmation + Stripe Payment dialog */}
-          {selectedLoan && (
-            <FundLoanDialog
-              loan={selectedLoan}
-              open={showFundDialog}
-              onOpenChange={setShowFundDialog}
-              onSuccess={handleFundSuccess}
-            />
-          )}
         </DialogContent>
       </Dialog>
+
+      {/* Fund loan confirmation + Stripe Payment dialog — rendered at page level to avoid nesting an overlay inside the details Dialog */}
+      <FundLoanDialog
+        loan={selectedLoan}
+        open={showFundDialog}
+        onOpenChange={setShowFundDialog}
+        onSuccess={handleFundSuccess}
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   IndianRupee,
@@ -33,6 +34,8 @@ import { calculateEMI } from '@/lib/emi'
 import api from '@/lib/api'
 
 export default function Investments() {
+  const navigate = useNavigate()
+
   const [investments, setInvestments] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')

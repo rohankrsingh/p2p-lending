@@ -26,6 +26,39 @@ import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
+/**
+ * Resolve the platform's SETTLEMENT currency + amount for a PaymentIntent.
+ *
+ * Test platforms are US-based, so INR charges are auto-converted by Stripe
+ * (e.g. ₹10,000 -> $104.69). Connect transfers must be created in the
+ * settlement currency — the platform's available balance only ever holds
+ * that currency, so `currency: 'inr'` transfers always fail.
+ */
+// Stripe creates the charge's balance_transaction slightly AFTER the
+// payment_intent.succeeded event is dispatched — a well-known race. Retry a
+// few times so the FIRST webhook delivery succeeds instead of returning 500
+// (which then depends on Stripe's backoff retry to eventually process the
+// repayment). If it still isn't ready we throw; the 500 response makes Stripe
+// retry the webhook, and the handler's idempotency guards prevent double work.
+async function getSettlementAmount(paymentIntent) {
+  if (!paymentIntent.latest_charge) {
+    throw new Error(`PaymentIntent ${paymentIntent.id} has no latest_charge`);
+  }
+  const chargeId = paymentIntent.latest_charge;
+
+  let charge;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    charge = await stripe.charges.retrieve(chargeId);
+    if (charge.balance_transaction) break;
+    if (attempt < 6) await new Promise((r) => setTimeout(r, 1000));
+  }
+  if (!charge?.balance_transaction) {
+    throw new Error(`Charge ${chargeId} has no balance_transaction after retries`);
+  }
+  const bt = await stripe.balanceTransactions.retrieve(charge.balance_transaction);
+  return { amount: bt.amount, currency: bt.currency };
+}
+
 // ─────────────────────────────────────────────────────────
 // Day 12: Create Stripe Connect Express account
 // POST /api/stripe/create-connect-account
@@ -321,10 +354,14 @@ export const stripeWebhookHandler = async (req, res) => {
 
               // Disbursement: real transfer of the principal to the borrower's
               // Connect account (platform acts as escrow between lender & borrower).
+              // Amount/currency come from the charge's balance transaction — the
+              // platform settles in USD (INR charges auto-convert), so an INR
+              // transfer would always fail with "insufficient available funds".
+              const settle = await getSettlementAmount(paymentIntent);
               const disbursalTransfer = await stripe.transfers.create(
                 {
-                  amount: Math.round(loanRequest.amount * 100),
-                  currency: 'inr',
+                  amount: settle.amount,
+                  currency: settle.currency,
                   destination: borrowerUser.stripeAccountId,
                   transfer_group: fundedLoanDoc._id.toString(),
                   metadata: {
@@ -333,7 +370,10 @@ export const stripeWebhookHandler = async (req, res) => {
                     fundedLoanId: fundedLoanDoc._id.toString(),
                   },
                 },
-                { idempotencyKey: `disbursal-${paymentIntent.id}` }
+                // Key includes the fundedLoan id so that a webhook retry that
+                // re-creates the FundedLoan (fresh ObjectId) doesn't collide
+                // with a previously-cached idempotency key from a failed run.
+                { idempotencyKey: `disbursal-${paymentIntent.id}-${fundedLoanDoc._id.toString()}` }
               );
 
               await Transaction.create(
@@ -449,10 +489,16 @@ export const stripeWebhookHandler = async (req, res) => {
                   throw new Error(`Lender ${rl} has no Stripe Connect account — cannot pay out`);
                 }
 
+                // Transfers must be in the platform's settlement currency.
+                // The 98/2 split is applied to the settled (converted) amount.
+                const settle = await getSettlementAmount(paymentIntent);
+                const lenderPayoutSettled = Math.round(settle.amount * (1 - PLATFORM_FEE_RATE));
+                const platformFeeSettled = settle.amount - lenderPayoutSettled;
+
                 await stripe.transfers.create(
                   {
-                    amount: Math.round(lenderPayout * 100),
-                    currency: 'inr',
+                    amount: lenderPayoutSettled,
+                    currency: settle.currency,
                     destination: lenderUser.stripeAccountId,
                     transfer_group: repaymentScheduleId,
                     metadata: {
@@ -462,6 +508,9 @@ export const stripeWebhookHandler = async (req, res) => {
                     },
                   },
                   { idempotencyKey: `repayment-payout-${repaymentScheduleId}-${paymentIntent.id}` }
+                );
+                console.log(
+                  `[Stripe Webhook] Repayment payout ${settle.currency} ${lenderPayoutSettled} (fee ${platformFeeSettled}) sent to lender ${lenderUser.stripeAccountId}`
                 );
               }
 

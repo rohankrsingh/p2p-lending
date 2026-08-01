@@ -4,6 +4,9 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from '@/pages/auth/Login'
 import Register from '@/pages/auth/Register'
 
+// Landing
+import Landing from '@/pages/Landing'
+
 // Borrower pages
 import BorrowerDashboard from '@/pages/borrower/Dashboard'
 import BorrowerCreateLoan from '@/pages/borrower/CreateLoan'
@@ -34,6 +37,16 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
+      {/* Public landing page — shown to signed-out visitors */}
+      <Route
+        path="/"
+        element={
+          user
+            ? <Navigate to={`/${user.role}/dashboard`} replace />
+            : <Landing />
+        }
+      />
+
       {/* Borrower routes — wrapped in RoleGuard → AppShell */}
       <Route element={<RoleGuard role="borrower" />}>
         <Route path="/borrower/dashboard"   element={<BorrowerDashboard />} />
@@ -53,14 +66,6 @@ export default function App() {
       </Route>
 
       {/* Default redirect */}
-      <Route
-        path="/"
-        element={
-          user
-            ? <Navigate to={`/${user.role}/dashboard`} replace />
-            : <Navigate to="/login" replace />
-        }
-      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     <ThemeSwitcher />

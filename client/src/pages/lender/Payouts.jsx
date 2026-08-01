@@ -21,13 +21,11 @@ import {
   BadgeCheck,
   Landmark,
   TrendingUp,
-  ExternalLink,
   IndianRupee,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
 
 export default function Payouts() {
@@ -105,14 +103,14 @@ export default function Payouts() {
 
       {/* ── Stripe Account Status Banner ── */}
       {!isVerified ? (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border border-amber-500/30 bg-amber-500/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border border-warning/30 bg-warning/5">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
             <div>
-              <p className="text-amber-300 font-semibold text-sm">
+              <p className="text-warning font-semibold text-sm">
                 {hasAccount ? 'Stripe Verification Incomplete' : 'Stripe Account Not Connected'}
               </p>
-              <p className="text-amber-200/70 text-xs mt-0.5">
+              <p className="text-warning/70 text-xs mt-0.5">
                 {hasAccount
                   ? 'Complete your Stripe onboarding to receive EMI payouts directly to your bank account.'
                   : 'Connect a Stripe account to start receiving loan repayment payouts automatically.'}
@@ -121,7 +119,7 @@ export default function Payouts() {
           </div>
           <Button
             onClick={() => navigate('/lender/onboarding')}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-9 px-4 cursor-pointer shrink-0"
+            className="bg-warning text-warning-foreground hover:bg-warning/90 font-bold text-xs h-9 px-4 cursor-pointer shrink-0"
           >
             <ShieldCheck className="w-4 h-4 mr-1.5" />
             {hasAccount ? 'Complete Verification' : 'Connect Stripe'}
@@ -297,7 +295,7 @@ export default function Payouts() {
       </Card>
 
       {/* ── How Payouts Work ── */}
-      <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
+      <Card className="border-border bg-linear-to-b from-card to-muted/70 shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
             <Landmark className="w-4 h-4 text-primary" /> How Payouts Work

@@ -5,12 +5,10 @@ import {
   IndianRupee,
   Calendar,
   FileText,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   Info,
   CheckCircle2,
-  HelpCircle,
   Clock,
   ChevronDown,
   ChevronUp,
@@ -76,10 +74,16 @@ export default function CreateLoan() {
   }, [tenure, emi])
 
   const handleAmountInput = (e) => {
-    const val = Number(e.target.value)
-    if (val >= 0 && val <= 100000) {
-      setAmount(val)
+    const raw = e.target.value
+    // Allow clearing the field while typing
+    if (raw === '') {
+      setAmount(0)
+      return
     }
+    const val = Number(raw)
+    if (Number.isNaN(val) || val < 0) return
+    // Clamp typed input to the slider's valid range (₹1,000 – ₹50,000)
+    setAmount(Math.min(50000, Math.max(1000, val)))
   }
 
   const handleSubmit = async (e) => {
@@ -306,9 +310,9 @@ export default function CreateLoan() {
 
         {/* ── Right Column: Realtime Financial Breakdown ── */}
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
-          <Card className="border-primary/20 bg-gradient-to-b from-card via-card to-primary/5 shadow-md overflow-hidden relative">
+          <Card className="border-primary/20 bg-linear-to-b from-card via-card to-primary/5 shadow-md relative overflow-hidden">
             {/* Top Accent Stripe */}
-            <div className="h-1.5 bg-gradient-to-r from-primary to-emerald-500" />
+            <div className="h-1.5 bg-linear-to-r from-primary to-emerald-500" />
 
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -447,7 +451,7 @@ export default function CreateLoan() {
 
             <CardFooter className="bg-muted/30 border-t border-border/50 py-3 text-xs text-muted-foreground flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-              <span>No hidden charges. Automated EMI collection via UPI / Netbanking.</span>
+              <span>No hidden charges. Automated EMI collection, secured by Stripe.</span>
             </CardFooter>
           </Card>
         </div>

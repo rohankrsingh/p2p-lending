@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Landmark, ArrowRight, TrendingUp, ShieldCheck, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,14 @@ export default function Register() {
   const navigate = useNavigate()
   const setUser = useAuthStore((s) => s.setUser)
 
-  const [role, setRole] = useState('')
+  // Preselect a role when arriving from the landing page CTAs
+  // (/register?role=borrower | /register?role=lender)
+  const [searchParams] = useSearchParams()
+  const requestedRole = searchParams.get('role')
+
+  const [role, setRole] = useState(
+    requestedRole === 'borrower' || requestedRole === 'lender' ? requestedRole : ''
+  )
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
 
@@ -65,8 +72,8 @@ export default function Register() {
       <div className="grid min-h-[calc(100vh-1.5rem)] gap-6 lg:grid-cols-[0.94fr_1.06fr]">
         
         {/* ── Left Column: Sign Up Form ── */}
-        <div className="auth-panel relative flex min-h-[640px] items-center justify-center overflow-hidden rounded-2xl px-6 py-12 lg:min-h-0 lg:px-14 lg:py-16 xl:px-20">
-          <div className="mx-auto w-full max-w-[460px] space-y-8">
+        <div className="auth-panel relative flex min-h-160 items-center justify-center overflow-hidden rounded-2xl px-6 py-12 lg:min-h-0 lg:px-14 lg:py-16 xl:px-20">
+          <div className="mx-auto w-full max-w-115 space-y-8">
             
             {/* Header / Brand */}
             <div>
@@ -104,6 +111,7 @@ export default function Register() {
                         key={id}
                         type="button"
                         onClick={() => setRole(id)}
+                        aria-pressed={isActive}
                         className={cn(
                           'p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer relative',
                           isActive ? activeAccent : accent
@@ -192,13 +200,13 @@ export default function Register() {
         </div>
 
         {/* ── Right Column: Showcase & Platform Features ── */}
-        <div className="auth-splash relative flex min-h-[640px] flex-col justify-between overflow-hidden rounded-2xl p-8 text-foreground sm:p-12 lg:min-h-0 lg:p-16">
+        <div className="auth-splash relative flex min-h-160 flex-col justify-between overflow-hidden rounded-2xl p-8 text-foreground sm:p-12 lg:min-h-0 lg:p-16">
           
           {/* Subtle Ambient Glow */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/15 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-100 h-100 bg-primary/15 rounded-full blur-[100px] pointer-events-none" />
 
           {/* Testimonial & Quote */}
-          <div className="relative z-10 max-w-[460px] space-y-6 pt-4">
+          <div className="relative z-10 max-w-115 space-y-6 pt-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Peer-to-Peer Direct Credit</span>
@@ -223,7 +231,7 @@ export default function Register() {
           </div>
 
           {/* Floating Platform Card Preview */}
-          <div className="auth-glass relative z-10 mt-8 rounded-xl p-5 backdrop-blur-xl shadow-(--shadow-pop) space-y-4">
+          <div className="auth-glass relative z-10 mt-8 rounded-xl p-5 backdrop-blur-xl shadow-pop space-y-4">
             <div className="flex items-center justify-between text-xs border-b border-border/60 pb-3">
               <span className="font-medium text-foreground/70 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-primary" /> Platform Financial Guarantees

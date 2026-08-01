@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import {
-  IndianRupee,
-  Calendar,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -11,9 +9,6 @@ import {
   CreditCard,
   History,
   ShieldCheck,
-  TrendingDown,
-  Info,
-  DollarSign,
   AlertCircle,
 } from 'lucide-react'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -21,7 +16,6 @@ import { stripePromise } from '@/lib/stripe'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -34,12 +28,15 @@ import api from '@/lib/api'
 import { useAuthStore } from '@/store/useAuthStore'
 
 // ── Inner Stripe form (lives inside <Elements>) ──────────────────
-function PaymentForm({ instalment, clientSecret, onSuccess }) {
+function PaymentForm({ instalment, onSuccess }) {
   const stripe = useStripe()
   const elements = useElements()
   const user = useAuthStore((s) => s.user)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Dialog may briefly unmount while a payment completes — never crash on null
+  if (!instalment) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -56,6 +53,14 @@ function PaymentForm({ instalment, clientSecret, onSuccess }) {
           billing_details: {
             name: user?.name || 'Borrower',
             ...(user?.email ? { email: user.email } : {}),
+            phone: '+10000000000',
+            address: {
+              line1: '1 Test Street',
+              city: 'Testville',
+              state: 'CA',
+              postal_code: '10000',
+              country: 'US',
+            },
           },
         },
       },
@@ -208,6 +213,9 @@ export default function Repayments() {
     return schedules.filter(item => item.status === 'paid')
   }, [schedules, activeTab])
 
+  // Settled instalments (paid history)
+  const paidSchedules = useMemo(() => schedules.filter((s) => s.status === 'paid'), [schedules])
+
   // Step 1: create the PaymentIntent for this instalment
   const handleInitiatePayment = async () => {
     if (!payingInstalment) return
@@ -227,6 +235,7 @@ export default function Repayments() {
   }
 
   const handlePaymentSuccess = () => {
+    setStep('confirm')
     setPayingInstalment(null)
     fetchRepayments()
   }
@@ -435,7 +444,7 @@ export default function Repayments() {
         {/* ── Right Column: Platform Disclosures & Transaction Log summary ── */}
         <div className="lg:col-span-4 space-y-6">
           {/* Security details card */}
-          <Card className="border-border bg-gradient-to-b from-card to-muted/70 shadow-md">
+          <Card className="border-border bg-linear-to-b from-card to-muted/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                 <ShieldCheck className="w-4.5 h-4.5 text-primary" /> Secure Card Payments
@@ -466,14 +475,11 @@ export default function Repayments() {
             <CardContent className="text-xs space-y-3">
               {loading ? (
                 <p className="text-muted-foreground/70">Checking logs...</p>
-              ) : schedules.filter(s => s.status === 'paid').length === 0 ? (
+              ) : paidSchedules.length === 0 ? (
                 <p className="text-muted-foreground/70">No settled history found.</p>
               ) : (
                 <div className="space-y-3">
-                  {schedules
-                    .filter(s => s.status === 'paid')
-                    .slice(0, 3)
-                    .map((item) => (
+                  {paidSchedules.slice(0, 3).map((item) => (
                       <div
                         key={item._id}
                         className="p-2.5 rounded-lg bg-background/60 border border-border space-y-1 font-mono text-[11px]"
@@ -484,15 +490,15 @@ export default function Repayments() {
                         </div>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground/70">
                           <span>Paid on {new Date(item.paidAt).toLocaleDateString('en-IN')}</span>
-                          <span className="truncate max-w-[100px]" title={item.stripePaymentIntentId}>
+                          <span className="truncate max-w-25" title={item.stripePaymentIntentId}>
                             {item.stripePaymentIntentId?.slice(-8)}
                           </span>
                         </div>
                       </div>
                     ))}
-                  {schedules.filter(s => s.status === 'paid').length > 3 && (
+                  {paidSchedules.length > 3 && (
                     <p className="text-[10px] text-center text-muted-foreground/70 italic">
-                      + {schedules.filter(s => s.status === 'paid').length - 3} more payments logged
+                      + {paidSchedules.length - 3} more payments logged
                     </p>
                   )}
                 </div>
@@ -572,7 +578,23 @@ export default function Repayments() {
               </DialogFooter>
             </>
           ) : (
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'night',
+                  variables: {
+                    colorPrimary: 'var(--primary)',
+                    colorBackground: 'var(--card)',
+                    colorText: 'var(--foreground)',
+                    colorDanger: 'var(--destructive)',
+                    fontFamily: 'Geist, system-ui, sans-serif',
+                    borderRadius: '12px',
+                  },
+                },
+              }}
+            >
               <PaymentForm instalment={payingInstalment} onSuccess={handlePaymentSuccess} />
             </Elements>
           )}

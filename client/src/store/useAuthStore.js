@@ -14,11 +14,6 @@ export const useAuthStore = create(
           user: state.user ? { ...state.user, ...partial } : null,
         })),
 
-      setStripeVerified: (verified) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, stripeVerified: verified } : null,
-        })),
-
       logout: () => set({ user: null, token: null }),
     }),
     {

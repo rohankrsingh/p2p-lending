@@ -33,9 +33,9 @@ export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2">
+    <div className="fixed bottom-4 right-4 z-100 flex flex-col items-end gap-2">
       {open && (
-        <div className="w-64 rounded-2xl border border-border bg-popover p-3 shadow-(--shadow-pop) animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
+        <div className="w-64 rounded-2xl border border-border bg-popover p-3 shadow-pop animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
           <div className="flex items-center justify-between px-1 pb-2">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               <Sparkles className="size-3.5 text-primary" /> Design direction
@@ -108,7 +108,7 @@ export default function ThemeSwitcher() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex h-11 items-center gap-2 rounded-full border px-4 text-xs font-semibold shadow-(--shadow-pop) transition-all cursor-pointer',
+          'flex h-11 items-center gap-2 rounded-full border px-4 text-xs font-semibold shadow-pop transition-all cursor-pointer',
           open
             ? 'bg-primary text-primary-foreground border-primary'
             : 'bg-popover text-foreground border-border hover:border-primary/50'

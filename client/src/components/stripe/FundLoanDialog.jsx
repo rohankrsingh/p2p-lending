@@ -55,6 +55,14 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
     const billingDetails = {
       name: user?.name || 'Lender',
       ...(user?.email ? { email: user.email } : {}),
+      phone: '+10000000000',
+      address: {
+        line1: '1 Test Street',
+        city: 'Testville',
+        state: 'CA',
+        postal_code: '10000',
+        country: 'US',
+      },
     }
 
     const { error } = await stripe.confirmPayment({
