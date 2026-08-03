@@ -44,6 +44,7 @@ function PaymentForm({ loan, _clientSecret, onSuccess, onError }) {
   const user = useAuthStore((s) => s.user)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  if (!loan) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -194,7 +195,12 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
 
   // ── Step 1: Confirmation (AlertDialog) ──────────────────────────
   if (step === 'confirm') {
-    const emi = loan ? calculateEMI(loan.amount, loan.interestRate, loan.tenure) : { emi: 0, totalInterest: 0 }
+    // Dialog is rendered at page level (Marketplace passes selectedLoan,
+    // which is null before any loan is selected). Bail out early so the
+    // closed AlertDialog never dereferences loan.amount.
+    if (!loan) return null
+
+    const emi = calculateEMI(loan.amount, loan.interestRate, loan.tenure)
 
     return (
       <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -288,6 +294,8 @@ export default function FundLoanDialog({ loan, open, onOpenChange, onSuccess }) 
 
   // ── Step 2: Stripe Payment (Dialog) ────────────────────────────
   if (step === 'payment') {
+    if (!loan) return null
+
     if (!clientSecret) {
       return (
         <Dialog open={open} onOpenChange={onOpenChange}>
